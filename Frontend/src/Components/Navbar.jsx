@@ -9,7 +9,7 @@ const Navbar = () => {
     <nav className="bg-sky-300 text-white p-4 shadow-lg">
       <div className="container w-max flex justify-between items-center">
         <Link to="/" className="flex items-center text-2xl font-bold">
-          <img src={logo} alt="Logo" className="w-25 h-12" />
+          <img src={logo} alt="Logo" className="w-25 h-12 hover:bg-blue-300" />
         </Link>
 
         <button
@@ -23,25 +23,25 @@ const Navbar = () => {
 
         
         <div className="hidden md:flex space-x-6 absolute right-5">
-          <Link to="/home" className="hover:text-yellow-300 hover:bg-purple-600 p-3  rounded">
+          <Link to="/home" className="hover:text-emerald-400 hover:bg-blue-300 p-3  rounded">
             Home
           </Link>
-          <Link to="/quiz" className="hover:text-yellow-300 hover:bg-purple-600 p-3 rounded">
+          <Link to="/quiz" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
             Quiz
           </Link>
-          <Link to="/leaderboard" className="hover:text-yellow-300 hover:bg-purple-600 p-3 rounded">
+          <Link to="/leaderboard" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
             Leaderboard
           </Link>
-          <Link to="/about-us" className="hover:text-yellow-300 hover:bg-purple-600 p-3 rounded">
-            About & Contact
+          <Link to="/about-us" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
+            AboutUs & Contact
           </Link>
-          <Link to="/faq" className="hover:text-yellow-300 hover:bg-purple-600 p-3 rounded">
+          <Link to="/faq" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
             FAQ
           </Link>
-          <Link to="/profile" className="hover:text-yellow-300 hover:bg-purple-600 p-3 rounded">
+          <Link to="/profile" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
             Profile
           </Link>
-          <Link to="/login" className="hover:text-yellow-300 hover:bg-purple-600 p-3 rounded">
+          <Link to="/login" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
             Login
           </Link>
         </div>
@@ -56,49 +56,49 @@ const Navbar = () => {
         <div className="flex flex-col items-center space-y-2">
           <Link
             to="/home"
-            className="hover:text-yellow-300 block py-2 px-4 w-full text-center" 
+            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" 
           >
             Home
           </Link>
           <Link
             to="/quiz"
-            className="hover:text-yellow-300 block py-2 px-4 w-full text-center" 
+            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" 
           >
             Quiz
           </Link>
           <Link
             to="/leaderboard"
-            className="hover:text-yellow-300 block py-2 px-4 w-full text-center" // Added block, padding, and width
+            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" // Added block, padding, and width
           >
             Leaderboard
           </Link>
           <Link
             to="/about-us"
-            className="hover:text-yellow-300 block py-2 px-4 w-full text-center" // Added block, padding, and width
+            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" // Added block, padding, and width
           >
             About & Contact
           </Link>
           <Link
             to="/faq"
-            className="hover:text-yellow-300 block py-2 px-4 w-full text-center" // Added block, padding, and width
+            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" // Added block, padding, and width
           >
             FAQ
           </Link>
           <Link
             to="/profile"
-            className="hover:text-yellow-300 block py-2 px-4 w-full text-center" // Added block, padding, and width
+            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" // Added block, padding, and width
           >
             Profile
           </Link>
           <Link
             to="/login"
-            className="hover:text-yellow-300 block py-2 px-4 w-full text-center" // Added block, padding, and width
+            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" // Added block, padding, and width
           >
             Login
           </Link>
           <Link
             to="/signup"
-            className="hover:text-yellow-300 block py-2 px-4 w-full text-center" // Added block, padding, and width
+            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" // Added block, padding, and width
           >
             Signup
           </Link>
