@@ -3,6 +3,9 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import ReactDom from "react-dom/client";
 import App from "./App.jsx";
 import MainPage from "./Pages/MainPage.jsx";
+import Home from "./Components/Home.jsx";
+import Login from "./Pages/Login.jsx";
+import SignUp from "./Pages/SignUp.jsx";
 const router = createBrowserRouter([
   {
     path: "/",
@@ -10,26 +13,26 @@ const router = createBrowserRouter([
     children: [
       {
         path: "/",
-        element: <MainPage />,
+        element: <Home />,
       },
       {
         path: "/quiz",
         element: <MainPage />,
       },
       {
-        path: "/feed",
+        path: "/leaderboard",
         element: <MainPage />,
       },
       {
-        path: "/companies",
+        path: "/Home",
         element: <MainPage />,
       },
       {
-        path: "/connections",
+        path: "/about-us",
         element: <MainPage />,
       },
       {
-        path: "/jobs",
+        path: "/faq",
         element: <MainPage />,
       },
       {
@@ -40,11 +43,11 @@ const router = createBrowserRouter([
   },
   {
     path: "/login",
-    element: <MainPage />,
+    element: <Login />,
   },
   {
     path: "/signup",
-    element: <MainPage />,
+    element: <SignUp />,
   },
 ]);
 
