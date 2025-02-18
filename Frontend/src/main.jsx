@@ -7,6 +7,7 @@ import Home from "./Components/Home.jsx";
 import Login from "./Pages/Login.jsx";
 import SignUp from "./Pages/SignUp.jsx";
 import AboutUs from "./Pages/AboutUs.jsx";
+import BuildQuiz from "./Components/BuildQuiz.jsx";
 const router = createBrowserRouter([
   {
     path: "/",
@@ -39,6 +40,10 @@ const router = createBrowserRouter([
       {
         path: "/profile",
         element: <MainPage />,
+      },
+      {
+        path: "/quiz-builder",
+        element: <BuildQuiz />,
       },
     ],
   },
