@@ -6,7 +6,7 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="bg-purple-600 text-white p-4 shadow-lg">
+    <nav className="bg-sky-300 text-white p-4 shadow-lg">
       <div className="container w-max flex justify-between items-center">
         <Link to="/" className="flex items-center text-2xl font-bold">
           <img src={logo} alt="Logo" className="w-25 h-12" />
