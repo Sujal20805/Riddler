@@ -4,7 +4,17 @@ const BuildQuiz = () => {
   const [questions, setQuestions] = useState([]);
   const [selectedQuestionId, setSelectedQuestionId] = useState(null);
   const [formErrors, setFormErrors] = useState({});
+  const [isAddingNewQuestion, setIsAddingNewQuestion] = useState(false);
+
   const addQuestion = () => {
+    if (selectedQuestionId !== null) {
+      const errors = validateForm(selectedQuestion);
+      if (Object.keys(errors).length > 0) {
+        alert("Please save the current question before adding a new one.");
+        return;
+      }
+    }
+
     const newQuestion = {
       id: Date.now(),
       questionText: '',
@@ -15,6 +25,8 @@ const BuildQuiz = () => {
     };
     setQuestions([...questions, newQuestion]);
     setSelectedQuestionId(newQuestion.id);
+    setIsAddingNewQuestion(true);
+    setFormErrors({});
   };
 
   const updateQuestion = (id, field, value) => {
@@ -41,10 +53,19 @@ const BuildQuiz = () => {
   };
 
   const deleteQuestion = (id) => {
-    setQuestions(questions.filter((question) => question.id !== id));
     if (selectedQuestionId === id) {
+      const errors = validateForm(selectedQuestion);
+      if (Object.keys(errors).length > 0) {
+        if (!confirm("Are you sure you want to delete this unsaved question?")) {
+          return;
+        }
+      }
+      setFormErrors({});
       setSelectedQuestionId(null);
+      setIsAddingNewQuestion(false);
     }
+
+    setQuestions(questions.filter((question) => question.id !== id));
   };
 
   const handleImageChange = (questionId, e) => {
@@ -66,31 +87,47 @@ const BuildQuiz = () => {
     if (question.options.some(option => !option)) {
       errors.options = 'All options are required.';
     }
-    if (question.correctAnswerIndex === null) {
+    if (question.correctAnswerIndex === null || isNaN(question.correctAnswerIndex)) { // Check for NaN
       errors.correctAnswerIndex = 'Correct answer is required.';
     }
     return errors;
   };
 
   const handleSaveQuestion = () => {
-    if (!selectedQuestion) return;
+    if (!selectedQuestion) return;  // Added this check
 
     const errors = validateForm(selectedQuestion);
     setFormErrors(errors);
 
-    if (Object.keys(errors).length === 0) {
-        // Update the questions array with the edited question
-        setQuestions(questions.map(question => question.id === selectedQuestion.id ? selectedQuestion : question));
 
-        // Clear selected question after saving
-        setSelectedQuestionId(null);
+    if (Object.keys(errors).length === 0) {
+        // Find and update the question in the array
+        const updatedQuestions = questions.map(question => {
+            if (question.id === selectedQuestion.id) {
+                return selectedQuestion; // Replace with the updated question
+            }
+            return question;
+        });
+
+        setQuestions(updatedQuestions); // Update the state with the modified array
+        setIsAddingNewQuestion(false);
     }
   };
 
   const handleQuestionClick = (id) => {
+    if (selectedQuestionId !== null && selectedQuestionId !== id) {
+      const errors = validateForm(selectedQuestion);
+      if (Object.keys(errors).length > 0) {
+        alert("Please save the current question before switching.");
+        return;
+      }
+    }
+
     setSelectedQuestionId(id);
-    setFormErrors({}); // Clear errors when selecting a new question
+    setFormErrors({});
+    setIsAddingNewQuestion(false);
   };
+
 
   const selectedQuestion = questions.find(q => q.id === selectedQuestionId);
 
@@ -122,7 +159,8 @@ const BuildQuiz = () => {
                           deleteQuestion(question.id);
                         }}
                       >
-                        Delete
+                        {/* Font Awesome Delete Icon */}
+                        <i className="fas fa-trash"></i>
                       </button>
                     </div>
                   ))}
@@ -130,6 +168,7 @@ const BuildQuiz = () => {
                     type="button"
                     className="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                     onClick={addQuestion}
+                    disabled={selectedQuestionId !== null && isAddingNewQuestion && Object.keys(validateForm(selectedQuestion)).length > 0}
                   >
                     Add Question
                   </button>

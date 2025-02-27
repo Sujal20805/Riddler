@@ -22,21 +22,15 @@ const Navbar = () => {
         </button>
 
         
-        <div className="hidden md:flex space-x-6 absolute right-5">
-          <Link to="/home" className="hover:text-emerald-400 hover:bg-blue-300 p-3  rounded">
-            Home
+        <div className="hidden md:flex space-x-6 absolute right-5"> 
+          <Link to="/about-us" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
+            AboutUs & Contact
           </Link>
-          <Link to="/quiz" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
-            Quiz
-          </Link>
-          <Link to="/leaderboard" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
-            Leaderboard
-          </Link>
-          <Link to="/faqs" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
+          <Link to="/faq" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
             FAQ
           </Link>
-          <Link to="/profile" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
-            Profile
+          <Link to="/login" className="hover:text-emerald-400 hover:bg-blue-300 p-3 rounded">
+            Login
           </Link>
         </div>
       </div>
@@ -49,34 +43,22 @@ const Navbar = () => {
       >
         <div className="flex flex-col items-center space-y-2">
           <Link
-            to="/home"
-            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" 
-          >
-            Home
-          </Link>
-          <Link
-            to="/quiz"
-            className="hover:text-emerald-400 block py-2 px-4 w-full text-center" 
-          >
-            Quiz
-          </Link>
-          <Link
-            to="/leaderboard"
+            to="/about-us"
             className="hover:text-emerald-400 block py-2 px-4 w-full text-center" // Added block, padding, and width
           >
-            Leaderboard
+            About & Contact
           </Link>
           <Link
-            to="/faqs"
+            to="/faq"
             className="hover:text-emerald-400 block py-2 px-4 w-full text-center" // Added block, padding, and width
           >
             FAQ
           </Link>
           <Link
-            to="/profile"
+            to="/login"
             className="hover:text-emerald-400 block py-2 px-4 w-full text-center" // Added block, padding, and width
           >
-            Profile
+            Login
           </Link>
         </div>
       </div>
