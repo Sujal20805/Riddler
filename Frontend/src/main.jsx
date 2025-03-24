@@ -4,19 +4,35 @@ import ReactDom from "react-dom/client";
 import App from "./App.jsx";
 import MainPage from "./Pages/MainPage.jsx";
 import Home from "./Components/Home.jsx";
-import Login from "./Pages/Login.jsx";
-import SignUp from "./Pages/SignUp.jsx";
-import AboutUs from "./Pages/AboutUs.jsx";
-import BuildQuiz from "./Components/BuildQuiz.jsx";
+import LoginPage from "./Pages/Login.page.jsx";
+import SignupPage from "./Pages/Signup.page.jsx";
+import QuizBuilderPage from "./Pages/QuizBuilder.page.jsx";
+import AboutUsPage from "./Pages/AboutUs.page.jsx";
+import PreApp from "./PreApp.jsx";
+import DashboardPage from "./Pages/Dashboard.page.jsx";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: <PreApp />,
     children: [
       {
         path: "/",
         element: <Home />,
       },
+      {
+        path: "/about-us",
+        element: <AboutUsPage />,
+      },
+      {
+        path: "/faq",
+        element: <MainPage />,
+      },
+    ],
+  },
+  {
+    path: "/",
+    element: <App />,
+    children: [
       {
         path: "/quiz",
         element: <MainPage />,
@@ -26,34 +42,34 @@ const router = createBrowserRouter([
         element: <MainPage />,
       },
       {
-        path: "/Home",
-        element: <Home />,
-      },
-      {
-        path: "/about-us",
-        element: <AboutUs />,
-      },
-      {
-        path: "/faq",
-        element: <MainPage />,
+        path: "/home",
+        element: <DashboardPage />,
       },
       {
         path: "/profile",
         element: <MainPage />,
       },
       {
-        path: " ",
-        element: <BuildQuiz />,
+        path: "/quiz-builder",
+        element: <QuizBuilderPage />,
+      },
+      {
+        path: "/aboutus",
+        element: <AboutUsPage />,
+      },
+      {
+        path: "/faqs",
+        element: <MainPage />,
       },
     ],
   },
   {
     path: "/login",
-    element: <Login />,
+    element: <LoginPage />,
   },
   {
     path: "/signup",
-    element: <SignUp />,
+    element: <SignupPage />,
   },
 ]);
 
