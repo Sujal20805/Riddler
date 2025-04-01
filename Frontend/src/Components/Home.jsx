@@ -15,9 +15,9 @@ function Home(){
             <Link to="/login" className="bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-purple-800 shadow-md text-center">
               Login
             </Link>
-            <button className="bg-pink-700 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-pink-800 shadow-md">
+            <Link to="/about-us" className="bg-pink-700 text-white px-6 py-3 rounded-lg font-semibold text-lg hover:bg-purple-800 shadow-md text-center">
               Learn More
-            </button>
+            </Link>
           </div>
         </div>
       </div>

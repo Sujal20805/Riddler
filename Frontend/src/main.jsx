@@ -10,6 +10,9 @@ import QuizBuilderPage from "./Pages/QuizBuilder.page.jsx";
 import AboutUsPage from "./Pages/AboutUs.page.jsx";
 import PreApp from "./PreApp.jsx";
 import DashboardPage from "./Pages/Dashboard.page.jsx";
+import Profile from "./Components/Profile.jsx";
+import Faq from "./Components/Faq.jsx";
+import Play from "./Components/Play.jsx";
 const router = createBrowserRouter([
   {
     path: "/",
@@ -25,7 +28,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/faq",
-        element: <MainPage />,
+        element: <Faq />,
       },
     ],
   },
@@ -47,7 +50,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/profile",
-        element: <MainPage />,
+        element: <Profile />,
       },
       {
         path: "/quiz-builder",
@@ -59,7 +62,11 @@ const router = createBrowserRouter([
       },
       {
         path: "/faqs",
-        element: <MainPage />,
+        element: <Faq />,
+      },
+      {
+        path: "/play",
+        element: <Play />,
       },
     ],
   },
@@ -78,3 +85,5 @@ ReactDom.createRoot(document.getElementById("root")).render(
     <RouterProvider router={router} />
   </React.StrictMode>
 );
+
+export default main;
