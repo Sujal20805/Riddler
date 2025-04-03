@@ -1,40 +1,81 @@
-// Dashboard.jsx
-import React from 'react';
+// src/components/Dashboard.jsx
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios'; // Using axios for cleaner API calls
+
+// Helper function to generate initials for the avatar
+const generateInitials = (title) => {
+    if (!title) return '??';
+    const words = title.trim().split(/\s+/);
+    if (words.length === 1) {
+        return words[0].substring(0, 2).toUpperCase();
+    } else if (words.length > 1) {
+        return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return '??';
+};
+
+// Helper function to truncate text
+const truncateText = (text, maxLength) => {
+    if (!text) return '';
+    if (text.length <= maxLength) {
+        return text;
+    }
+    return text.substring(0, maxLength) + '...';
+};
+
+// Simple consistent color generation based on title length (can be more sophisticated)
+const getAvatarColor = (title) => {
+    const colors = [
+        'bg-blue-500', 'bg-green-500', 'bg-red-500', 'bg-yellow-500',
+        'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'
+    ];
+    const index = (title?.length || 0) % colors.length;
+    return colors[index];
+}
 
 const Dashboard = () => {
-    // Dummy data for quiz cards (3 rows)
-    const quizData = [
-        [
-            { id: 1, title: 'General Knowledge', topic: 'general', image: 'https://via.placeholder.com/200x150/3498db/ffffff?text=General+Knowledge' },
-            { id: 2, title: 'Science Quiz', topic: 'science', image: 'https://via.placeholder.com/200x150/2ecc71/ffffff?text=Science' },
-            { id: 3, title: 'History Trivia', topic: 'history', image: 'https://via.placeholder.com/200x150/e74c3c/ffffff?text=History' },
-            { id: 4, title: 'Math Challenge', topic: 'math', image: 'https://via.placeholder.com/200x150/f39c12/ffffff?text=Math' },
-        ],
-        [
-            { id: 5, title: 'Geography Quiz', topic: 'geography', image: 'https://via.placeholder.com/200x150/9b59b6/ffffff?text=Geography' },
-            { id: 6, title: 'Literature Test', topic: 'literature', image: 'https://via.placeholder.com/200x150/1abc9c/ffffff?text=Literature' },
-            { id: 7, title: 'Pop Culture', topic: 'pop_culture', image: 'https://via.placeholder.com/200x150/e67e22/ffffff?text=Pop+Culture' },
-            { id: 8, title: 'Coding Quiz', topic: 'coding', image: 'https://via.placeholder.com/200x150/7f8c8d/ffffff?text=Coding' },
-        ],
-        [
-            { id: 9, title: 'Music Theory', topic: 'music', image: 'https://via.placeholder.com/200x150/2c3e50/ffffff?text=Music' },
-            { id: 10, title: 'Art History', topic: 'art', image: 'https://via.placeholder.com/200x150/d35400/ffffff?text=Art' },
-            { id: 11, title: 'Sports Quiz', topic: 'sports', image: 'https://via.placeholder.com/200x150/27ae60/ffffff?text=Sports' },
-            { id: 12, title: 'Movie Trivia', topic: 'movies', image: 'https://via.placeholder.com/200x150/8e44ad/ffffff?text=Movies' },
-        ],
-    ];
+    const [quizzes, setQuizzes] = useState([]);
+    const [leaderboard, setLeaderboard] = useState([]);
+    const [loadingQuizzes, setLoadingQuizzes] = useState(true);
+    const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Dummy leaderboard data
-    const leaderboardData = {
-        quizName: 'General Knowledge Quiz',
-        date: '2024-07-28',
-        topScores: [
-            { username: 'User1', score: 95 },
-            { username: 'User2', score: 92 },
-            { username: 'User3', score: 88 },
-        ],
-    };
+    const API_BASE_URL = 'http://localhost:5000/api'; // Adjust if your backend runs elsewhere
+
+    useEffect(() => {
+        const fetchQuizzes = async () => {
+            try {
+                setLoadingQuizzes(true);
+                setError(null);
+                const response = await axios.get(`${API_BASE_URL}/quizzes`);
+                setQuizzes(response.data);
+            } catch (err) {
+                console.error("Error fetching quizzes:", err);
+                setError('Failed to load quizzes. Please try again later.');
+            } finally {
+                setLoadingQuizzes(false);
+            }
+        };
+
+        const fetchLeaderboard = async () => {
+            try {
+                setLoadingLeaderboard(true);
+                // No specific error state for leaderboard, piggyback on general error
+                const response = await axios.get(`${API_BASE_URL}/users/leaderboard`);
+                setLeaderboard(response.data);
+            } catch (err) {
+                console.error("Error fetching leaderboard:", err);
+                // Optionally set a specific leaderboard error
+                setError(prev => prev || 'Failed to load leaderboard.'); // Add error if none exists
+            } finally {
+                setLoadingLeaderboard(false);
+            }
+        };
+
+        fetchQuizzes();
+        fetchLeaderboard();
+    }, []); // Empty dependency array means this runs once on mount
 
     return (
         <div className="bg-gray-100 min-h-screen p-4 md:p-8">
@@ -54,50 +95,77 @@ const Dashboard = () => {
                     </div>
                 </Link>
 
+                 {/* Display Error if any */}
+                 {error && (
+                    <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong className="font-bold">Error:</strong>
+                        <span className="block sm:inline"> {error}</span>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {/* Quiz Card Carousels */}
+                    {/* Quiz Grid */}
                     <div className="md:col-span-3">
-                        {quizData.map((row, rowIndex) => (
-                            <div key={rowIndex} className="mb-8">
-                                <h2 className="text-xl font-semibold mb-4 text-gray-800">Explore Quiz Category {rowIndex + 1}</h2>
-                                <div className="flex overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-gray-400 scrollbar-track-gray-200 -ml-2 md:-ml-0"> {/* Adjusted margin for better spacing */}
-                                    {row.map((quiz) => (
-                                        <Link key={quiz.id} to={`/quiz/${quiz.topic}`} className="mx-2 first:ml-0 last:mr-0 flex-none"> {/* Added route and spacing */}
-                                            <div className="w-64 h-72 bg-white rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition duration-300 cursor-pointer">
-                                                <img src={quiz.image} alt={quiz.title} className="w-full h-40 object-cover rounded-t-xl" />
-                                                <div className="p-4 flex flex-col justify-between h-32">
-                                                    <div>
-                                                        <h3 className="text-lg font-semibold mb-2 text-gray-900 truncate">{quiz.title}</h3>
-                                                        <p className="text-gray-600 text-sm truncate">{quiz.topic.replace('_', ' ').toUpperCase()}</p>
-                                                    </div>
-                                                    <span className="text-blue-500 font-medium text-sm mt-2">Start Quiz →</span>
-                                                </div>
+                        <h2 className="text-xl font-semibold mb-4 text-gray-800">Available Quizzes</h2>
+                        {loadingQuizzes ? (
+                             <div className="text-center py-10 text-gray-600">Loading quizzes...</div>
+                        ) : quizzes.length === 0 && !error ? (
+                             <div className="text-center py-10 text-gray-600">No quizzes found. Why not create one?</div>
+                         ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {quizzes.map((quiz) => (
+                                    <Link key={quiz._id} to={`/quiz/${quiz.quizCode}`} className="block"> {/* Link using quizCode or _id */}
+                                        <div className="bg-white rounded-xl shadow-md hover:shadow-lg hover:scale-105 transition duration-300 cursor-pointer h-64 flex flex-col overflow-hidden">
+                                            {/* Avatar Section */}
+                                            <div className={`w-full h-28 flex items-center justify-center ${getAvatarColor(quiz.title)}`}>
+                                                <span className="text-4xl font-bold text-white">
+                                                    {generateInitials(quiz.title)}
+                                                </span>
                                             </div>
-                                        </Link>
-                                    ))}
-                                </div>
+                                            {/* Content Section */}
+                                            <div className="p-4 flex flex-col justify-between flex-grow">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold mb-1 text-gray-900 truncate" title={quiz.title}>
+                                                        {truncateText(quiz.title, 30)}
+                                                    </h3>
+                                                    <p className="text-gray-600 text-sm mb-2 h-10 overflow-hidden"> {/* Fixed height for description */}
+                                                        {truncateText(quiz.description, 60)} {/* Truncate description */}
+                                                    </p>
+                                                </div>
+                                                <span className="text-blue-500 font-medium text-sm mt-auto self-start">
+                                                    Start Quiz →
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))}
                             </div>
-                        ))}
+                         )}
                     </div>
 
                     {/* Leaderboard */}
                     <div className="md:col-span-1">
-                        <div className="bg-white rounded-xl shadow-md p-5 sticky top-4"> {/* Made leaderboard sticky and adjusted padding */}
-                            <h2 className="text-lg font-bold mb-4 text-gray-800 border-b pb-2">Quiz Leaderboard</h2>
-                            <div className="mb-3">
-                                <p className="text-gray-700 font-medium">Quiz: <span className="text-gray-900">{leaderboardData.quizName}</span></p>
-                                <p className="text-gray-700 text-sm">Date: {leaderboardData.date}</p>
-                            </div>
-                            <ul className="divide-y divide-gray-200">
-                                {leaderboardData.topScores.map((score, index) => (
-                                    <li key={index} className="py-2 flex justify-between items-center">
-                                        <span className="text-gray-800">{score.username}</span>
-                                        <span className="text-gray-800 font-medium">{score.score}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="mt-4 pt-4 border-t">
-                                <Link to="/leaderboard" className="block text-center text-sm text-blue-500 hover:text-blue-700 font-medium">View Full Leaderboard</Link>
+                        <div className="bg-white rounded-xl shadow-md p-5 sticky top-4">
+                            <h2 className="text-lg font-bold mb-4 text-gray-800 border-b pb-2">Top Players</h2>
+                            {loadingLeaderboard ? (
+                                <div className="text-center py-5 text-gray-500 text-sm">Loading leaderboard...</div>
+                            ) : leaderboard.length === 0 ? (
+                                 <div className="text-center py-5 text-gray-500 text-sm">No leaderboard data available yet.</div>
+                             ) : (
+                                <ul className="divide-y divide-gray-200">
+                                    {leaderboard.map((user, index) => (
+                                        <li key={user.username || index} className="py-2 flex justify-between items-center">
+                                            <span className="text-gray-800 truncate pr-2" title={user.username}>{index + 1}. {user.username}</span>
+                                            <span className="text-gray-800 font-medium whitespace-nowrap">{user.totalPoints} pts</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                             {/* Keep the link even if data is loading/empty */}
+                             <div className="mt-4 pt-4 border-t">
+                                <Link to="/leaderboard" className="block text-center text-sm text-blue-500 hover:text-blue-700 font-medium">
+                                    View Full Leaderboard
+                                 </Link>
                             </div>
                         </div>
                     </div>
