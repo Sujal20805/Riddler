@@ -1,154 +1,188 @@
-// Play.jsx
+// src/Components/Play.jsx
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom'; // Import hooks
+import axiosInstance from '../api/axiosInstance'; // Import instance
 
 const Play = () => {
+    const { quizCode } = useParams(); // Get quizCode from URL
+    const navigate = useNavigate();
+
+    const [quiz, setQuiz] = useState(null); // Store the whole quiz object
     const [questions, setQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [selectedOption, setSelectedOption] = useState(null);
+    const [selectedAnswers, setSelectedAnswers] = useState([]); // Store selected index for each question
+    const [currentSelection, setCurrentSelection] = useState(null); // Currently selected option index for the *current* question
     const [score, setScore] = useState(0);
+    const [maxScore, setMaxScore] = useState(0);
     const [showFeedback, setShowFeedback] = useState(false);
     const [feedbackMessage, setFeedbackMessage] = useState('');
-    const [correctAnswerIndex, setCorrectAnswerIndex] = useState(null);
+    const [correctAnswerIndex, setCorrectAnswerIndex] = useState(null); // Correct answer for the current question
     const [quizFinished, setQuizFinished] = useState(false);
-    const [leaderboardData, setLeaderboardData] = useState([]);
-    const [progress, setProgress] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [finalResult, setFinalResult] = useState(null); // Store result from submit API
 
-    // Demo Quiz Questions (JSON format as requested)
-    const demoQuestions = [
-        {
-            id: 1,
-            questionText: 'What is the capital of France?',
-            options: ['London', 'Paris', 'Berlin', 'Rome'],
-            correctAnswerIndex: 1, // Paris is at index 1
-            points: 10,
-        },
-        {
-            id: 2,
-            questionText: 'Which planet is known as the "Red Planet"?',
-            options: ['Earth', 'Mars', 'Jupiter', 'Venus'],
-            correctAnswerIndex: 1, // Mars is at index 1
-            points: 10,
-        },
-        {
-            id: 3,
-            questionText: 'What is the largest mammal in the world?',
-            options: ['African Elephant', 'Blue Whale', 'Giraffe', 'Polar Bear'],
-            correctAnswerIndex: 1, // Blue Whale is at index 1
-            points: 10,
-        },
-        {
-            id: 4,
-            questionText: 'How many continents are there?',
-            options: ['Five', 'Six', 'Seven', 'Eight'],
-            correctAnswerIndex: 2, // Seven continents
-            points: 10,
-        },
-        {
-            id: 5,
-            questionText: 'What is the chemical symbol for water?',
-            options: ['Wa', 'H2O', 'CO2', 'O2'],
-            correctAnswerIndex: 1, // H2O
-            points: 10,
-        },
-    ];
-
-    // Demo Leaderboard Data
-    const demoLeaderboard = [
-        { name: 'Alice', score: 40 },
-        { name: 'Bob', score: 30 },
-        { name: 'Charlie', score: 20 },
-        { name: 'David', score: 10 },
-        { name: 'Eve', score: 0 },
-    ];
-
+    // Fetch Quiz Data
     useEffect(() => {
-        // Simulate fetching questions from backend (using demo questions)
-        setQuestions(demoQuestions);
-        setLeaderboardData(demoLeaderboard); // Load demo leaderboard
-    }, []);
+        const fetchQuiz = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const response = await axiosInstance.get(`/quizzes/${quizCode}`);
+                setQuiz(response.data);
+                setQuestions(response.data.questions);
+                // Initialize selectedAnswers array with nulls
+                setSelectedAnswers(new Array(response.data.questions.length).fill(null));
+                setCurrentQuestionIndex(0); // Start from first question
+                setQuizFinished(false);     // Reset finished state
+                setFinalResult(null);       // Reset result
+                setShowFeedback(false);     // Reset feedback
+                setCurrentSelection(null);  // Reset current selection
+            } catch (err) {
+                console.error("Error fetching quiz:", err.response?.data || err.message);
+                setError(err.response?.data?.message || "Failed to load quiz. Invalid code or server error.");
+                 if (err.response?.status === 401) {
+                     localStorage.removeItem('quizAppToken');
+                     localStorage.removeItem('quizAppUser');
+                     navigate('/login');
+                 }
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    useEffect(() => {
-        if (questions.length > 0) {
-            setProgress(((currentQuestionIndex + 1) / questions.length) * 100);
+        if (quizCode) {
+            fetchQuiz();
+        } else {
+             setError("No quiz code provided.");
+             setLoading(false);
         }
-    }, [currentQuestionIndex, questions.length]);
 
+    }, [quizCode, navigate]); // Re-fetch if quizCode changes
 
+    // Calculate progress
+    const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
+
+    // Handle Option Selection for the CURRENT question
     const handleOptionSelect = (index) => {
-        if (showFeedback || quizFinished) return; // Prevent re-selection after feedback or quiz completion
+        if (showFeedback || quizFinished || isSubmitting) return;
+        setCurrentSelection(index);
 
-        setSelectedOption(index);
-        const isCorrect = index === questions[currentQuestionIndex].correctAnswerIndex;
-        setCorrectAnswerIndex(questions[currentQuestionIndex].correctAnswerIndex);
+        // Store the selection for this question index
+        const updatedAnswers = [...selectedAnswers];
+        updatedAnswers[currentQuestionIndex] = index;
+        setSelectedAnswers(updatedAnswers);
 
-        if (isCorrect) {
-            setScore(score + questions[currentQuestionIndex].points);
-            setFeedbackMessage('Correct!');
-        } else {
-            setFeedbackMessage('Incorrect!');
-        }
-        setShowFeedback(true);
+        // --- Optional: Show immediate feedback ---
+        // To show immediate feedback, you'd need the correct answers here.
+        // The current backend route GET /api/quizzes/:quizCode EXCLUDES correct answers.
+        // You'd need to either:
+        // 1. Modify backend to include correct answers (less secure if someone inspects network).
+        // 2. Make a separate call *after* selection to check just this answer (adds complexity).
+        // 3. Only show feedback after submitting the whole quiz (simplest, implemented below).
+        // For now, we'll just record the answer and move on or submit.
     };
 
-    const handleNextQuestion = () => {
-        setShowFeedback(false);
-        setSelectedOption(null);
-        setCorrectAnswerIndex(null);
+    // Handle moving to the next question or finishing
+    const handleNextOrFinish = async () => {
         if (currentQuestionIndex < questions.length - 1) {
+            // Move to next question
             setCurrentQuestionIndex(currentQuestionIndex + 1);
+            setCurrentSelection(selectedAnswers[currentQuestionIndex + 1]); // Load previous selection if exists
+            setShowFeedback(false); // Hide feedback if it was shown
         } else {
-            setQuizFinished(true);
+            // --- Finish Quiz and Submit ---
+            setIsSubmitting(true);
+            setError(null);
+            try {
+                 console.log("Submitting answers:", selectedAnswers);
+                 const response = await axiosInstance.post(`/quizzes/${quizCode}/submit`, {
+                    answers: selectedAnswers, // Send the array of selected indices
+                });
+
+                setFinalResult(response.data); // Store { message, score, maxScore, updatedTotalPoints }
+                setScore(response.data.score); // Update score state
+                setMaxScore(response.data.maxScore); // Update maxScore state
+                setQuizFinished(true); // Mark quiz as finished
+
+            } catch (err) {
+                 console.error("Error submitting quiz:", err.response?.data || err.message);
+                 setError(err.response?.data?.message || "Failed to submit quiz results.");
+                 if (err.response?.status === 401) {
+                     localStorage.removeItem('quizAppToken');
+                     localStorage.removeItem('quizAppUser');
+                     navigate('/login');
+                 }
+            } finally {
+                 setIsSubmitting(false);
+            }
         }
     };
 
-    const currentQuestion = questions[currentQuestionIndex];
+    // Get the current question object safely
+    const currentQuestion = questions ? questions[currentQuestionIndex] : null;
 
-    if (!currentQuestion) {
-        return <div className="text-center text-gray-700 py-10">Loading quiz...</div>;
+
+    // --- Render Logic ---
+    if (loading) {
+        return <div className="text-center p-10">Loading quiz...</div>;
+    }
+    if (error) {
+        return <div className="text-center p-10 text-red-600">Error: {error} <Link to="/home" className="text-blue-500 underline">Go Home</Link></div>;
+    }
+    if (!quiz || !currentQuestion) {
+        return <div className="text-center p-10">Quiz data not available.</div>;
     }
 
-    if (quizFinished) {
+    // --- Quiz Finished View ---
+    if (quizFinished && finalResult) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 py-6 flex justify-center items-center">
+            <div className="min-h-screen bg-gradient-to-br from-green-100 to-teal-200 py-6 flex justify-center items-center px-4">
                 <div className="bg-white shadow-xl rounded-2xl p-8 max-w-md w-full text-center">
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4 animate-pulse">Quiz Finished!</h2>
-                    <p className="text-lg text-gray-700 mb-6">Your final score is: <span className="font-semibold text-blue-600">{score}</span> out of {questions.length * 10}</p>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-3">Leaderboard</h3>
-                    <ul className="mb-6">
-                        {leaderboardData.sort((a, b) => b.score - a.score).map((entry, index) => (
-                            <li key={index} className="py-2">
-                                <span className="font-medium">{index + 1}. {entry.name}</span> - <span className="text-green-500">{entry.score}</span> points
-                            </li>
-                        ))}
-                    </ul>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Quiz Finished!</h2>
+                    <p className="text-xl text-gray-700 mb-6">
+                        Your score: <span className="font-semibold text-green-600">{finalResult.score}</span> out of {finalResult.maxScore}
+                    </p>
+                    {/* You could add a leaderboard snippet here if needed */}
+                     <p className="text-md text-gray-600 mb-6">
+                        Your total points are now: {finalResult.updatedTotalPoints}
+                     </p>
+                     {error && <p className="text-red-500 mb-4">{error}</p>} {/* Show submission error */}
                     <button
-                        onClick={() => { setQuizFinished(false); setCurrentQuestionIndex(0); setScore(0); setProgress(0); setShowFeedback(false); setSelectedOption(null); setCorrectAnswerIndex(null); }}
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-300"
+                        onClick={() => navigate('/home')} // Go back to dashboard
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-300 mr-2"
                     >
-                        Play Again
+                        Back to Dashboard
                     </button>
+                     {/* Optional: Replay button - would need state reset logic */}
+                     {/* <button onClick={resetQuiz} ... >Play Again</button> */}
                 </div>
             </div>
         );
     }
 
 
+    // --- Active Quiz View ---
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 py-6 px-4 sm:px-6 lg:px-8 flex justify-center items-center">
             <div className="bg-white shadow-xl rounded-2xl overflow-hidden max-w-xl w-full">
                 {/* Progress Bar */}
-                <div className="bg-gray-100 h-2 rounded-full overflow-hidden">
+                <div className="bg-gray-200 h-3 ">
                     <div
-                        className="bg-green-500 h-full rounded-full transition-width duration-500 ease-in-out"
+                        className="bg-green-500 h-full rounded-r-full transition-all duration-500 ease-in-out"
                         style={{ width: `${progress}%` }}
                     ></div>
                 </div>
 
                 <div className="p-8">
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-4">{`Question ${currentQuestionIndex + 1}/${questions.length}`}</h2>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-2 flex justify-between">
+                        <span>Question {currentQuestionIndex + 1}/{questions.length}</span>
+                        <span className="font-bold text-blue-600">{currentQuestion.points} Points</span>
+                    </h2>
 
                     {currentQuestion.image && (
-                        <img src={currentQuestion.image} alt="Question Image" className="mb-4 rounded-md max-h-48 w-full object-contain" />
+                        <img src={currentQuestion.image} alt="Question" className="mb-4 rounded-md max-h-60 w-full object-contain" />
                     )}
                     <p className="text-lg text-gray-700 mb-6">{currentQuestion.questionText}</p>
 
@@ -157,38 +191,28 @@ const Play = () => {
                         {currentQuestion.options.map((option, index) => (
                             <button
                                 key={index}
-                                className={`option-button block w-full p-4 rounded-md border-2 border-gray-300 text-left hover:border-blue-500 focus:outline-none transition-colors duration-300
-                                    ${showFeedback && index === correctAnswerIndex ? 'bg-green-100 border-green-500 text-green-700 font-semibold' : ''}
-                                    ${showFeedback && selectedOption === index && index !== correctAnswerIndex ? 'bg-red-100 border-red-500 text-red-700 line-through' : ''}
-                                    ${selectedOption === index && !showFeedback ? 'bg-blue-50 border-blue-500' : ''}
+                                className={`option-button block w-full p-4 rounded-md border-2 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-400
+                                    ${currentSelection === index ? 'bg-indigo-100 border-indigo-500 ring-2 ring-indigo-300 scale-105 shadow-md' : 'bg-white border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'}
                                 `}
                                 onClick={() => handleOptionSelect(index)}
-                                disabled={showFeedback}
+                                disabled={isSubmitting} // Disable while submitting final answers
                             >
                                 <span className="font-semibold">{String.fromCharCode(65 + index)}.</span> {option}
-                                {showFeedback && index === correctAnswerIndex && <i className="fas fa-check ml-2 text-green-500"></i>}
-                                {showFeedback && selectedOption === index && index !== correctAnswerIndex && <i className="fas fa-times ml-2 text-red-500"></i>}
                             </button>
                         ))}
                     </div>
 
-                    {showFeedback && (
-                        <div className="mb-6 p-4 rounded-md bg-gray-50 border border-gray-200">
-                            <p className={`font-semibold ${selectedOption === correctAnswerIndex ? 'text-green-700' : 'text-red-700'} mb-2`}>{feedbackMessage}</p>
-                            <p className="text-gray-600">
-                                {selectedOption !== correctAnswerIndex && <span>Correct answer was: <span className="font-semibold">{String.fromCharCode(65 + correctAnswerIndex)}. {currentQuestion.options[correctAnswerIndex]}</span></span>}
-                            </p>
-                        </div>
-                    )}
+                    {/* Error display during quiz */}
+                    {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
 
-                    {showFeedback && (
-                        <button
-                            onClick={handleNextQuestion}
-                            className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-300"
-                        >
-                            {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'See Results'}
-                        </button>
-                    )}
+                    {/* Next/Finish Button */}
+                    <button
+                        onClick={handleNextOrFinish}
+                        className={`w-full font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-300 ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-700 text-white'}`}
+                        disabled={currentSelection === null || isSubmitting} // Disable if no option selected for current question OR during submission
+                    >
+                        {isSubmitting ? 'Submitting...' : (currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Finish Quiz')}
+                    </button>
                 </div>
             </div>
         </div>

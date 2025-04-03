@@ -1,30 +1,55 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/diff.png";
+import axiosInstance from "../api/axiosInstance"; // Import the configured instance
+import { toast, ToastContainer } from 'react-toastify'; // Optional: for better feedback
+import 'react-toastify/dist/ReactToastify.css';      // Optional: Toast CSS
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Username:", username, "Password:", password);
-    navigate("/home");
+    setLoading(true);
+    try {
+      const response = await axiosInstance.post("/auth/login", {
+        username,
+        password,
+      });
+
+      console.log("Login Success:", response.data);
+
+      // Store token and user info
+      localStorage.setItem('quizAppToken', response.data.token);
+      localStorage.setItem('quizAppUser', JSON.stringify({ // Store basic user info
+          _id: response.data._id,
+          username: response.data.username,
+          name: response.data.name
+      }));
+
+      // toast.success("Login Successful!"); // Optional toast
+      navigate("/home"); // Redirect to dashboard
+
+    } catch (error) {
+      console.error("Login Failed:", error.response?.data || error.message);
+      const message = error.response?.data?.message || "Login failed. Please try again.";
+      // toast.error(message); // Optional toast
+      alert(message); // Simple alert for now
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-green-400 to-blue-500 p-4">
+      {/* Optional: Add ToastContainer here if using react-toastify */}
+      {/* <ToastContainer position="top-center" autoClose={3000} /> */}
       <div className="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md">
-        {/* Centered Logo */}
-        <div className="flex justify-center mb-4">
-          <Link to="/" className="flex items-center text-2xl font-bold bg-emerald-200">
-            <img src={logo} alt="Logo" className="w-30 h-20" />
-          </Link>
-        </div>
-        <h2 className="text-4xl font-extrabold text-center text-green-700 mb-6">Login</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-5">
+        {/* ... rest of the form ... */}
+         <div className="mb-5">
             <label className="block text-gray-800 font-semibold">Username</label>
             <input
               type="text"
@@ -32,6 +57,7 @@ const Login = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
           <div className="mb-5">
@@ -42,19 +68,17 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-green-700 text-white p-3 rounded-lg hover:bg-green-800 font-bold shadow-md"
+            className={`w-full bg-green-700 text-white p-3 rounded-lg hover:bg-green-800 font-bold shadow-md ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={loading}
           >
-            Login
+            {loading ? 'Logging in...' : 'Login'}
           </button>
-        </form>
-        <p className="text-center mt-6 text-gray-800">
-          Don't have an account?
-          <Link to="/signup" className="text-green-700 hover:underline font-semibold ml-1">Sign Up</Link>
-        </p>
+        {/* ... rest of the component ... */}
       </div>
     </div>
   );

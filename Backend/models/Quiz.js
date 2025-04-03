@@ -4,53 +4,49 @@ const mongoose = require('mongoose');
 const QuestionSchema = new mongoose.Schema({
     questionText: {
         type: String,
-        required: [true, 'Question text is required'],
+        required: [true, 'Question text cannot be empty.'],
         trim: true,
     },
-    image: {
-        type: String, // Store Base64 encoded image string
-        required: false, // Make the image optional
+    image: { // Store Base64 string or URL
+        type: String,
         default: null,
-        // Note: Storing large Base64 strings can impact performance and document size.
-        // Consider dedicated file storage (like S3/Cloudinary) for production apps
-        // storing only the URL here if images are large or numerous.
     },
     options: {
         type: [String],
         required: true,
         validate: [
-            (val) => val.length === 4 && val.every(opt => typeof opt === 'string' && opt.trim().length > 0),
-            'Question must have exactly 4 non-empty options'
-        ],
+            (val) => Array.isArray(val) && val.length === 4 && val.every(opt => typeof opt === 'string' && opt.trim().length > 0),
+            'Must provide exactly 4 non-empty options.'
+        ]
     },
-    correctOptionIndex: {
+    correctOptionIndex: { // Renamed from correctAnswerIndex for consistency
         type: Number,
-        required: [true, 'Correct option index is required'],
+        required: [true, 'Correct answer index is required.'],
         min: 0,
         max: 3,
     },
     points: {
         type: Number,
-        required: [true, 'Points are required'],
-        min: [10, 'Points must be at least 10'],
+        required: [true, 'Points are required.'],
+        min: [10, 'Points must be at least 10.'],
         validate: [
-             (val) => val % 10 === 0,
-             'Points must be a multiple of 10'
+            (val) => Number.isInteger(val) && val > 0 && val % 10 === 0,
+            'Points must be a positive multiple of 10.'
         ]
-    },
-}, { _id: false }); // Don't create separate _id for subdocument questions
+    }
+}, { _id: false }); // Don't create separate _id for subdocuments unless needed
 
 const QuizSchema = new mongoose.Schema({
-    quizCode: {
+    quizCode: { // Unique code to identify and play the quiz
         type: String,
-        required: [true, 'Quiz code is required'],
-        unique: true, // Ensure quiz codes are unique
+        required: [true, 'Quiz code is required.'],
+        unique: true,
         trim: true,
-        uppercase: true,
+        uppercase: true, // Store code in uppercase
     },
     title: {
         type: String,
-        required: [true, 'Quiz title is required'],
+        required: [true, 'Quiz title is required.'],
         trim: true,
     },
     description: {
@@ -59,23 +55,20 @@ const QuizSchema = new mongoose.Schema({
         default: '',
     },
     questions: {
-        type: [QuestionSchema], // Array of nested questions
+        type: [QuestionSchema],
+        required: true,
         validate: [
             (val) => Array.isArray(val) && val.length > 0,
-            'Quiz must have at least one question'
+            'Quiz must have at least one question.'
         ]
     },
-    createdBy: {
-        type: String, // Or mongoose.Schema.Types.ObjectId if linking to a User model
-        required: false, // Make optional or required based on auth setup
-        default: 'anonymous', // Or remove default if always required
+    createdBy: { // Link to the user who created the quiz
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'User', // Reference to the User model
     },
-}, {
-    timestamps: true, // Automatically adds createdAt and updatedAt fields
-    collection: 'quizzes' // Explicitly set the collection name
-});
+}, { timestamps: true });
 
-// Optional: Add index for faster lookups if needed later
-QuizSchema.index({ quizCode: 1 });
+const Quiz = mongoose.model('Quiz', QuizSchema);
 
-module.exports = mongoose.model('Quiz', QuizSchema);
+module.exports = Quiz;
