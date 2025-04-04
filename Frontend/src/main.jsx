@@ -14,7 +14,7 @@ import Profile from "./Components/Profile.jsx";
 import Faq from "./Components/Faq.jsx";
 import Play from "./Components/Play.jsx";
 // Helper Component
-import ProtectedRoute from "./Components/ProtectedRoute.js" // Import the guard
+import ProtectedRoute from "./Components/ProtectedRoute.jsx" // Import the guard
 
 const router = createBrowserRouter([
   // --- Public Routes ---
@@ -63,11 +63,11 @@ const router = createBrowserRouter([
             path: "home", // Explicit path to dashboard
             element: <DashboardPage />,
           },
-          {
-             path: "leaderboard",
-             element: <LeaderboardPage />, // Assuming you create this page component
-             // If MainPage was intended for leaderboard, use: element: <MainPage />,
-           },
+          // {
+          //    path: "leaderboard",
+          //    element: <Leaderboard />, // Assuming you create this page component
+          //    // If MainPage was intended for leaderboard, use: element: <MainPage />,
+          //  },
            {
              path: "profile",
              element: <Profile />,
@@ -78,7 +78,7 @@ const router = createBrowserRouter([
            },
             {
              path: "faqs", // Logged-in FAQ?
-             element: <FaqLoggedIn />, // Or reuse <Faq /> if identical
+             element: <Faq />, // Or reuse <Faq /> if identical
            },
            {
              // Use :quizCode parameter for playing specific quiz
