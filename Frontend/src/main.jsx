@@ -13,6 +13,7 @@ import DashboardPage from "./Pages/Dashboard.page.jsx";
 import Profile from "./Components/Profile.jsx";
 import Faq from "./Components/Faq.jsx";
 import Play from "./Components/Play.jsx";
+import Leaderboard from "./Components/Leaderboard.jsx";
 // Helper Component
 import ProtectedRoute from "./Components/ProtectedRoute.jsx" // Import the guard
 
@@ -34,7 +35,6 @@ const router = createBrowserRouter([
         path: "faq", // Relative path
         element: <Faq />,
       },
-       // Add other public pages here if needed
     ],
   },
   {
@@ -75,6 +75,10 @@ const router = createBrowserRouter([
            {
              path: "build",
              element: <QuizBuilderPage />,
+           },
+           {
+            path: "leaderboard",
+            element: <Leaderboard />,
            },
             {
              path: "faqs", // Logged-in FAQ?
