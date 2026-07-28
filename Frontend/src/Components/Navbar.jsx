@@ -11,7 +11,7 @@ const Navbar = () => {
     localStorage.removeItem("quizAppToken");
     localStorage.removeItem("quizAppUser");
     setIsOpen(false);
-    navigate("/login");
+    navigate("/");
   };
 
   const isLoggedIn = !!localStorage.getItem("quizAppToken");
