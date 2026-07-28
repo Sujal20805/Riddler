@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom'; // Added Link
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
+import Card from './ui/Card';
+import Badge from './ui/Badge';
+import Button from './ui/Button';
 
 const Play = () => {
-    const { quizCode } = useParams(); // Get quizCode from URL parameter
+    const { quizCode } = useParams();
     const navigate = useNavigate();
 
     // State variables
@@ -11,9 +14,13 @@ const Play = () => {
     const [questions, setQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedAnswers, setSelectedAnswers] = useState([]);
-    const [currentSelection, setCurrentSelection] = useState(null); // User's choice for the current question
+    const [currentSelection, setCurrentSelection] = useState(null);
+
+    // Timer state (30 seconds per question)
+    const [timeLeft, setTimeLeft] = useState(30);
+
     const [quizFinished, setQuizFinished] = useState(false);
-    const [finalResult, setFinalResult] = useState(null); // Stores { score, maxScore, updatedTotalPoints }
+    const [finalResult, setFinalResult] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,33 +28,32 @@ const Play = () => {
     // Fetch Quiz Data Effect
     useEffect(() => {
         const handleAuthError = (err) => {
-             if (err.response?.status === 401) {
-                 console.error("Authentication error. Logging out.");
-                 localStorage.removeItem('quizAppToken');
-                 localStorage.removeItem('quizAppUser');
-                 navigate('/login');
-                 return true;
-             }
-             return false;
+            if (err.response?.status === 401) {
+                console.error("Authentication error. Logging out.");
+                localStorage.removeItem('quizAppToken');
+                localStorage.removeItem('quizAppUser');
+                navigate('/login');
+                return true;
+            }
+            return false;
         };
 
         const fetchQuiz = async () => {
             setLoading(true);
             setError(null);
-            setQuizFinished(false); // Reset state for new quiz load
+            setQuizFinished(false);
             setFinalResult(null);
             setCurrentQuestionIndex(0);
             setCurrentSelection(null);
+            setTimeLeft(30);
 
             try {
-                // Fetch quiz data (backend excludes correct answers here)
                 const response = await axiosInstance.get(`/quizzes/${quizCode}`);
                 if (!response.data || !response.data.questions || response.data.questions.length === 0) {
                     throw new Error("Invalid quiz data received.");
                 }
                 setQuiz(response.data);
                 setQuestions(response.data.questions);
-                // Initialize selectedAnswers array with null for each question
                 setSelectedAnswers(new Array(response.data.questions.length).fill(null));
             } catch (err) {
                 console.error("Error fetching quiz:", err.response?.data || err.message);
@@ -62,223 +68,278 @@ const Play = () => {
         if (quizCode) {
             fetchQuiz();
         } else {
-             setError("No quiz code specified in URL.");
-             setLoading(false);
+            setError("No quiz code specified.");
+            setLoading(false);
+        }
+    }, [quizCode, navigate]);
+
+    // Timer countdown hook
+    useEffect(() => {
+        if (loading || quizFinished || isSubmitting || !quiz) return;
+
+        if (timeLeft === 0) {
+            // Auto advance or submit when time runs out
+            handleNextOrFinish();
+            return;
         }
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [quizCode, navigate]); // Re-fetch only if quizCode changes
+        const timer = setTimeout(() => {
+            setTimeLeft(prev => prev - 1);
+        }, 1000);
 
-    // --- Event Handlers ---
+        return () => clearTimeout(timer);
+    }, [timeLeft, loading, quizFinished, isSubmitting, quiz]);
 
-    // Handle Option Selection for the current question
+    // Reset timer on question change
+    useEffect(() => {
+        setTimeLeft(30);
+    }, [currentQuestionIndex]);
+
+    // Handle Option Selection
     const handleOptionSelect = (index) => {
-        // Allow selection only if quiz is active and not submitting
         if (quizFinished || isSubmitting) return;
 
-        setCurrentSelection(index); // Update visual selection for the current question
+        setCurrentSelection(index);
 
-        // Update the stored answer for the current question index
         const updatedAnswers = [...selectedAnswers];
         updatedAnswers[currentQuestionIndex] = index;
         setSelectedAnswers(updatedAnswers);
     };
 
-    // Handle "Next" or "Finish" button click
+    // Handle Next or Finish
     const handleNextOrFinish = async () => {
-        // If not the last question, move to the next one
         if (currentQuestionIndex < questions.length - 1) {
             setCurrentQuestionIndex(currentQuestionIndex + 1);
-            // Restore the user's previous selection for the next question (if any)
             setCurrentSelection(selectedAnswers[currentQuestionIndex + 1]);
         } else {
-            // Last question: Submit the answers to the backend
             setIsSubmitting(true);
-            setError(null); // Clear previous submission errors
+            setError(null);
             try {
-                 console.log("Submitting answers:", selectedAnswers);
-                 // Backend endpoint expects { answers: [index1, index2, ...] }
-                 const response = await axiosInstance.post(`/quizzes/${quizCode}/submit`, {
+                console.log("Submitting answers:", selectedAnswers);
+                const response = await axiosInstance.post(`/quizzes/${quizCode}/submit`, {
                     answers: selectedAnswers,
                 });
 
-                setFinalResult(response.data); // Store { message, score, maxScore, updatedTotalPoints }
-                setQuizFinished(true); // Mark quiz as finished to show results screen
+                setFinalResult(response.data);
+                setQuizFinished(true);
 
             } catch (err) {
-                 console.error("Error submitting quiz:", err.response?.data || err.message);
-                  if (err.response?.status === 401) { // Handle potential auth errors during submit
-                     localStorage.removeItem('quizAppToken');
-                     localStorage.removeItem('quizAppUser');
-                     navigate('/login');
-                     return; // Stop execution
-                 }
-                 setError(err.response?.data?.message || "Failed to submit quiz results. Please try again.");
-                 // Keep the user on the last question page if submission fails
+                console.error("Error submitting quiz:", err.response?.data || err.message);
+                if (err.response?.status === 401) {
+                    localStorage.removeItem('quizAppToken');
+                    localStorage.removeItem('quizAppUser');
+                    navigate('/login');
+                    return;
+                }
+                setError(err.response?.data?.message || "Failed to compile score results.");
             } finally {
-                 setIsSubmitting(false); // Re-enable button
+                setIsSubmitting(false);
             }
         }
     };
 
-    // --- Helper Data ---
     const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
     const currentQuestion = questions ? questions[currentQuestionIndex] : null;
 
-    // --- Render Logic ---
-
-    // Loading State
+    // Loading Screen
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-screen bg-gray-100">
-                <div className="text-center p-10">
-                    <svg className="animate-spin h-8 w-8 text-indigo-600 mx-auto mb-4" /* ... SVG path ... */ viewBox="0 0 24 24"></svg>
-                    Loading Quiz...
+            <div className="min-h-screen bg-zinc-950 scanlines game-dot-grid flex items-center justify-center p-4">
+                <div className="font-heading font-black text-xl text-volt animate-pulse tracking-widest uppercase">
+                    INITIALIZING SIMULATION...
                 </div>
             </div>
         );
     }
 
-    // Error State
-    if (error && !quiz) { // Show error only if quiz failed to load initially
+    // Error Screen
+    if (error && !quiz) {
         return (
-            <div className="flex justify-center items-center min-h-screen bg-red-50 text-red-700">
-                <div className="text-center p-10 max-w-md">
-                    <i className="fas fa-exclamation-triangle fa-2x mb-3"></i>
-                    <p className="font-semibold mb-2">Error Loading Quiz</p>
-                    <p className="text-sm mb-4">{error}</p>
-                    <Link to="/home" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded text-sm">
-                        Back to Dashboard
+            <div className="min-h-screen bg-zinc-950 scanlines game-dot-grid flex items-center justify-center p-4">
+                <div className="border-[3px] border-black bg-neon-pink text-white p-6 shadow-[5px_5px_0_0_#000] max-w-md w-full text-center">
+                    <i className="fa-solid fa-triangle-exclamation text-2xl mb-3"></i>
+                    <h2 className="font-heading font-black text-lg uppercase mb-2">INTERFACE ERROR</h2>
+                    <p className="font-body text-xs mb-6 text-zinc-200">{error}</p>
+                    <Link to="/home" className="inline-block">
+                        <Button variant="black">DISENGAGE HUD</Button>
                     </Link>
                 </div>
             </div>
         );
     }
 
-    // Quiz data not loaded (should be covered by error/loading, but fallback)
     if (!quiz || !currentQuestion) {
         return (
-            <div className="flex justify-center items-center min-h-screen bg-gray-100">
-                 <div className="text-center p-10 text-gray-500">Quiz data is unavailable.</div>
-            </div>
-       );
-    }
-
-    // Quiz Finished View
-    if (quizFinished && finalResult) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-green-100 via-teal-50 to-cyan-100 py-8 flex justify-center items-center px-4">
-                <div className="bg-white shadow-xl rounded-2xl p-8 max-w-md w-full text-center transform transition-all hover:scale-105 duration-300">
-                    <i className="fas fa-trophy fa-3x mb-4 text-yellow-500"></i>
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Quiz Completed!</h2>
-                    <p className="text-xl text-gray-700 mb-2">
-                        Your score:
-                    </p>
-                    <p className="text-4xl font-bold mb-6">
-                        <span className="text-green-600">{finalResult.score}</span>
-                        <span className="text-gray-500 text-2xl"> / {finalResult.maxScore}</span>
-                    </p>
-                     <p className="text-md text-gray-600 mb-6 border-t pt-4">
-                        Your total points are now: <span className="font-semibold text-indigo-700">{finalResult.updatedTotalPoints}</span>
-                     </p>
-                     {/* Display submission error if it occurred */}
-                     {error && <p className="text-red-500 mb-4 text-sm">Error during submission: {error}</p>}
-                    <button
-                        onClick={() => navigate('/home')} // Navigate back to dashboard
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-1 transition-colors duration-300 shadow-md hover:shadow-lg"
-                    >
-                       <i className="fas fa-arrow-left mr-2"></i> Back to Dashboard
-                    </button>
-                </div>
+            <div className="min-h-screen bg-zinc-950 scanlines game-dot-grid flex items-center justify-center p-4">
+                <p className="text-zinc-500 font-mono text-sm uppercase">Simulated Chamber unavailable</p>
             </div>
         );
     }
 
-
-    // --- Active Quiz Question View ---
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-100 via-indigo-50 to-purple-100 py-6 px-4 sm:px-6 lg:px-8 flex justify-center items-start md:items-center">
-            <div className="bg-white shadow-xl rounded-2xl overflow-hidden max-w-2xl w-full my-6">
-                {/* Progress Bar */}
-                <div className="relative h-3 bg-gray-200">
-                    <div
-                        className="absolute left-0 top-0 h-full bg-gradient-to-r from-green-400 to-blue-500 transition-all duration-300 ease-linear rounded-r-full"
-                        style={{ width: `${progress}%` }}
-                    ></div>
-                     <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs font-semibold text-gray-600">
-                         {currentQuestionIndex + 1} / {questions.length}
-                    </span>
-                </div>
-
-                {/* Quiz Content */}
-                <div className="p-6 md:p-8">
-                    {/* Question Title and Points */}
-                    <div className="mb-4 text-sm text-gray-500">Quiz: {quiz.title}</div>
-                    <h2 className="text-lg font-semibold text-gray-600 mb-2 flex justify-between items-center">
-                        <span>Question {currentQuestionIndex + 1}</span>
-                        <span className="font-bold text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full text-sm">{currentQuestion.points} Points</span>
-                    </h2>
-
-                    {/* Question Image (Optional) */}
-                    {currentQuestion.image && (
-                        <div className="my-4 p-2 border rounded-md bg-gray-50 flex justify-center">
-                             <img src={currentQuestion.image} alt="Question visual aid" className="rounded max-h-60 w-auto object-contain" />
-                        </div>
-                    )}
-                    {/* Question Text */}
-                    <p className="text-xl text-gray-800 mb-6 font-medium">{currentQuestion.questionText}</p>
-
-                    {/* Options Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        {currentQuestion.options.map((option, index) => (
-                            <button
-                                key={index}
-                                className={`option-button flex items-center w-full p-4 rounded-lg border-2 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400
-                                    ${currentSelection === index
-                                        ? 'bg-indigo-100 border-indigo-500 ring-2 ring-indigo-400 scale-105 shadow-lg font-semibold text-indigo-800'
-                                        : 'bg-white border-gray-300 hover:border-indigo-400 hover:bg-indigo-50 text-gray-700'}
-                                `}
-                                onClick={() => handleOptionSelect(index)}
-                                disabled={isSubmitting} // Disable while final submission is in progress
-                            >
-                                {/* Option Letter */}
-                                <span className={`flex-shrink-0 w-6 h-6 mr-3 rounded-full border-2 flex items-center justify-center text-xs font-bold ${currentSelection === index ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-gray-400 text-gray-500'}`}>
-                                    {String.fromCharCode(65 + index)}
-                                </span>
-                                {/* Option Text */}
-                                <span>{option}</span>
-                            </button>
-                        ))}
+    // Quiz Finished / Score screen
+    if (quizFinished && finalResult) {
+        return (
+            <div className="min-h-screen bg-zinc-950 text-white scanlines game-dot-grid py-12 px-4 flex items-center justify-center">
+                <Card variant="volt" className="max-w-md w-full text-center p-6 md:p-8 animate-pop-bounce">
+                    <div className="w-16 h-16 flex items-center justify-center bg-volt border-2 border-black rotate-[-6deg] mx-auto mb-6 shadow-[3px_3px_0_0_#000]">
+                        <i className="fa-solid fa-trophy text-black text-2xl"></i>
                     </div>
 
-                    {/* Error display during quiz (e.g., submission error) */}
-                    {error && <p className="text-red-500 mb-4 text-center text-sm font-medium">{error}</p>}
+                    <Badge variant="cyan" className="mb-4">EVALUATION CONCLUDED</Badge>
 
-                    {/* Next/Finish Button */}
-                    <button
-                        onClick={handleNextOrFinish}
-                        className={`w-full font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed
-                            ${isSubmitting ? 'bg-gray-400 text-gray-700' : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white disabled:from-gray-400 disabled:to-gray-500'}
-                        `}
-                        // Disable if no option is selected OR if submitting final answers
-                        disabled={currentSelection === null || isSubmitting}
+                    <h2 className="text-3xl font-black uppercase text-white font-heading tracking-wide mb-6">
+                        MISSION REPORT
+                    </h2>
+
+                    <div className="bg-zinc-950 border-[3px] border-black p-4 mb-6 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono block mb-1">FINAL SCORE</span>
+                        <span className="font-heading font-black text-4xl block">
+                            <span className="text-volt">{finalResult.score}</span>
+                            <span className="text-zinc-500 text-xl font-normal"> / {finalResult.maxScore}</span>
+                        </span>
+                    </div>
+
+                    <div className="bg-zinc-950 border-[3px] border-black p-4 mb-8 shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex justify-between items-center px-6">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono block">DOSSIER TOTAL:</span>
+                        <span className="font-heading font-black text-base text-neon-pink">
+                            {finalResult.updatedTotalPoints} PTS
+                        </span>
+                    </div>
+
+                    {error && (
+                        <p className="text-neon-pink text-xs font-mono font-bold uppercase mb-4">
+                            COMPILE ERROR: {error}
+                        </p>
+                    )}
+
+                    <Button
+                        onClick={() => navigate('/home')}
+                        variant="pink"
+                        className="w-full text-sm font-black"
                     >
-                        {isSubmitting ? (
-                             <span className="flex items-center justify-center">
-                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Submitting...
-                             </span>
-                            ) : (
-                                currentQuestionIndex < questions.length - 1
-                                    ? (<>Next Question <i className="fas fa-arrow-right ml-2"></i></>)
-                                    : (<>Finish Quiz <i className="fas fa-check-circle ml-2"></i></>)
-                            )
-                        }
-                    </button>
+                        DISENGAGE CHAMBERS
+                    </Button>
+                </Card>
+            </div>
+        );
+    }
+
+    // Active playing view
+    return (
+        <div className="min-h-screen bg-zinc-950 text-white scanlines game-dot-grid py-8 px-4 flex flex-col justify-center items-center font-sans animate-scanline-laser">
+            <div className="w-full max-w-2xl animate-slide-up">
+
+                {/* HUD Stats bar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-zinc-900 border-[3px] border-black p-4 shadow-[4px_4px_0_0_rgba(0,0,0,1)]">
+                    <div className="flex items-center gap-2">
+                        <Badge variant="cyan">HUD TYPE: {quizCode}</Badge>
+                        <span className="text-xs text-zinc-400 font-bold uppercase truncate max-w-[120px] sm:max-w-xs" title={quiz.title}>
+                            {quiz.title}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <Badge variant="voltage" className="bg-zinc-950 border-black flex gap-1.5 items-center select-none font-mono">
+                            <i className="fa-solid fa-clock text-neon-pink animate-pulse"></i>
+                            <span className={timeLeft <= 10 ? 'text-neon-pink font-black animate-pulse' : 'text-zinc-300'}>
+                                {timeLeft}S
+                            </span>
+                        </Badge>
+
+                        <Badge variant="volt">
+                            Q: {currentQuestionIndex + 1}/{questions.length}
+                        </Badge>
+                    </div>
                 </div>
+
+                {/* Progress HUD bar */}
+                <div className="w-full bg-zinc-900 border-[3px] border-black h-5 mb-8 relative select-none">
+                    <div
+                        className="h-full bg-volt border-r-2 border-black transition-all duration-300 ease-out"
+                        style={{ width: `${progress}%` }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-[10px] text-zinc-950 font-black tracking-widest font-heading select-none bg-volt px-1.5 border border-black/40">
+                            PROGRESS INDEX: {Math.round(progress)}%
+                        </span>
+                    </div>
+                </div>
+
+                {/* Question Panel */}
+                <Card variant="black" className="mb-6">
+                    <div className="flex justify-between items-start mb-4 border-b-2 border-zinc-800 pb-3">
+                        <span className="font-heading font-black text-sm uppercase text-volt">
+                            QUEST UNIT {currentQuestionIndex + 1}
+                        </span>
+                        <Badge variant="pink">{currentQuestion.points} PTS</Badge>
+                    </div>
+
+                    {currentQuestion.image && (
+                        <div className="border-[3px] border-black p-2 bg-zinc-950 mb-6 flex justify-center shadow-[3px_3px_0_0_#000]">
+                            <img
+                                src={currentQuestion.image}
+                                alt="Tactical visualization"
+                                className="max-h-56 w-auto object-contain border border-zinc-850"
+                            />
+                        </div>
+                    )}
+
+                    <h2 className="text-xl md:text-2xl font-heading font-black uppercase tracking-tight text-white mb-8 border-l-[4px] border-volt pl-3">
+                        {currentQuestion.questionText}
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {currentQuestion.options.map((option, index) => {
+                            const letter = String.fromCharCode(65 + index);
+                            const isSelected = currentSelection === index;
+
+                            return (
+                                <button
+                                    key={index}
+                                    type="button"
+                                    className={`w-full p-4 border-[3px] text-left transition-all duration-150 flex items-center gap-3 active:translate-x-[2px] active:translate-y-[2px] ${isSelected
+                                        ? 'border-volt bg-volt text-black shadow-[2px_2px_0_0_#000]'
+                                        : 'border-black bg-zinc-950 text-white hover:bg-zinc-900 shadow-[4px_4px_0_0_rgba(0,0,0,1)]'
+                                        }`}
+                                    onClick={() => handleOptionSelect(index)}
+                                    disabled={isSubmitting}
+                                >
+                                    <span className={`w-6 h-6 border-2 flex items-center justify-center text-xs font-heading font-black shrink-0 ${isSelected
+                                        ? 'bg-zinc-950 border-zinc-900 text-white'
+                                        : 'bg-zinc-900 border-zinc-800 text-zinc-400'
+                                        }`}>
+                                        {letter}
+                                    </span>
+                                    <span className="font-body font-bold text-sm leading-snug">
+                                        {option}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </Card>
+
+                {error && (
+                    <p className="text-neon-pink text-xs font-mono font-bold uppercase text-center mb-4">
+                        COMPILE REPORT: {error}
+                    </p>
+                )}
+
+                {/* Submit HUD Action */}
+                <Button
+                    onClick={handleNextOrFinish}
+                    className="w-full text-base font-black"
+                    variant={currentSelection === null || isSubmitting ? "ghost" : "volt"}
+                    disabled={currentSelection === null || isSubmitting}
+                    loading={isSubmitting}
+                >
+                    {currentQuestionIndex < questions.length - 1 ? (
+                        <>ADVANCE SIMULATOR <i className="fa-solid fa-arrow-right ml-2"></i></>
+                    ) : (
+                        <>SUBMIT SCORE MATRIX <i className="fa-solid fa-check-circle ml-2"></i></>
+                    )}
+                </Button>
+
             </div>
         </div>
     );

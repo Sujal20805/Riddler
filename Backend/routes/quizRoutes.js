@@ -1,6 +1,6 @@
 // backend/routes/quizRoutes.js
 const express = require('express');
-const { createQuiz, getAllQuizzes, getQuizByCode, submitQuiz } = require('../controllers/quizController');
+const { createQuiz, getAllQuizzes, getQuizByCode, submitQuiz, deleteQuiz } = require('../controllers/quizController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -10,7 +10,8 @@ router.route('/')
     .get(getAllQuizzes);        // Get all quizzes (public or use protect if login needed)
 
 router.route('/:quizCode')
-    .get(getQuizByCode); // Get specific quiz for playing (public or use protect)
+    .get(getQuizByCode) // Get specific quiz for playing
+    .delete(protect, deleteQuiz); // Delete the quiz (requires login)
 
 router.route('/:quizCode/submit')
     .post(protect, submitQuiz); // Submit quiz answers (requires login)

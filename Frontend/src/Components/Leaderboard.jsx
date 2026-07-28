@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axiosInstance from '../api/axiosInstance'; // Assuming same path as Dashboard
+import axiosInstance from '../api/axiosInstance';
+import Card from './ui/Card';
+import Badge from './ui/Badge';
+import Avatar from './ui/Avatar';
+import Skeleton from './ui/Skeleton';
 
-// Helper function to get rank-specific styling (optional but nice)
-const getRankClass = (rank) => {
+const getRankTheme = (rank) => {
     switch (rank) {
         case 1:
-            return 'bg-yellow-100 text-yellow-800 border-yellow-400'; // Gold
+            return { variant: 'volt', label: '① ST' };
         case 2:
-            return 'bg-gray-200 text-gray-800 border-gray-400';    // Silver
+            return { variant: 'pink', label: '② ND' };
         case 3:
-            return 'bg-orange-100 text-orange-800 border-orange-400'; // Bronze
+            return { variant: 'cyan', label: '③ RD' };
         default:
-            return 'bg-gray-100 text-gray-700 border-gray-300';     // Default
+            return { variant: 'zinc', label: `${rank} TH` };
     }
 };
 
@@ -23,155 +26,147 @@ const Leaderboard = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Function to check auth and potentially logout (same as Dashboard)
         const handleAuthError = (err) => {
             if (err.response?.status === 401) {
                 console.error("Authentication error. Logging out.");
                 localStorage.removeItem('quizAppToken');
                 localStorage.removeItem('quizAppUser');
                 navigate('/login');
-                return true; // Indicate auth error was handled
+                return true;
             }
-            return false; // Indicate other error
+            return false;
         };
 
         const fetchLeaderboard = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                // Fetch the full leaderboard - remove or adjust limit as needed
-                const response = await axiosInstance.get('/users/leaderboard'); // Fetch all or a larger limit
+                const response = await axiosInstance.get('/users/leaderboard');
                 setLeaderboardData(response.data);
             } catch (err) {
                 console.error("Error fetching leaderboard:", err.response?.data || err.message);
-                 if (!handleAuthError(err)) {
+                if (!handleAuthError(err)) {
                     setError('Failed to load leaderboard data. Please try again later.');
-                 }
+                }
             } finally {
-                 // Delay slightly for smoother transition
-                 setTimeout(() => setLoading(false), 300);
+                setTimeout(() => setLoading(false), 300);
             }
         };
 
-        // Check for token before fetching
         if (!localStorage.getItem('quizAppToken')) {
             navigate('/login');
-            return; // Prevent fetching if not logged in
+            return;
         }
 
         fetchLeaderboard();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigate]);
 
-    // Loading state: Spinner (alternative to skeletons for a full page)
-    const renderLoadingSpinner = () => (
-        <div className="flex justify-center items-center py-10">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-            <span className="ml-4 text-gray-600">Loading Leaderboard...</span>
-        </div>
-    );
-
-    // Skeleton Loader for list items (more detailed than dashboard's mini version)
-    const renderLeaderboardSkeletons = (count = 10) => (
-        <div className="space-y-3 animate-pulse">
+    const renderLeaderboardSkeletons = (count = 8) => (
+        <div className="space-y-4 animate-pulse">
             {Array.from({ length: count }).map((_, index) => (
-                 <div key={index} className="flex items-center justify-between p-4 bg-gray-100 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-4 bg-zinc-900 border-[3px] border-black shadow-[3px_3px_0px_0px_#000000]">
                     <div className="flex items-center space-x-4">
-                         <div className="h-6 w-6 bg-gray-300 rounded-md"></div> {/* Rank placeholder */}
-                         <div className="h-5 bg-gray-300 rounded w-32 md:w-48"></div> {/* Username placeholder */}
+                        <Skeleton className="h-9 w-9" />
+                        <Skeleton className="h-6 w-32" />
                     </div>
-                     <div className="h-5 bg-gray-300 rounded w-16 md:w-20"></div> {/* Points placeholder */}
-                 </div>
+                    <Skeleton className="h-6 w-16" />
+                </div>
             ))}
         </div>
     );
 
-
     return (
-        <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen p-4 md:p-8 font-sans">
-            <div className="container mx-auto max-w-4xl">
+        <div className="min-h-screen bg-zinc-950 text-white scanlines game-dot-grid p-4 md:p-8 font-sans animate-scanline-laser">
+            <div className="container mx-auto max-w-2xl z-10 relative animate-slide-up">
 
                 {/* Back Link */}
                 <div className="mb-6">
-                    <Link to="/dashboard" className="text-indigo-600 hover:text-indigo-800 transition duration-200 text-sm">
-                         <i className="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                    <Link
+                        to="/home"
+                        className="inline-flex items-center font-heading font-black text-xs uppercase tracking-wider text-volt hover:underline"
+                    >
+                        <i className="fa-solid fa-arrow-left-long mr-2" /> RETURN TO BOARD
                     </Link>
                 </div>
 
-                {/* Main Leaderboard Card */}
-                <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200/50">
-                     <div className="p-5 md:p-8 border-b border-gray-200 bg-gray-50/50">
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center">
-                             <i className="fas fa-trophy text-yellow-500 mr-3 text-xl"></i>
-                             Leaderboard
-                        </h1>
-                        <p className="text-gray-500 text-sm mt-1">See who's topping the charts!</p>
-                     </div>
-
-                     <div className="p-5 md:p-6">
-                         {/* Display Error if any */}
-                         {error && !loading && (
-                            <div className="mb-6 bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded relative shadow-sm" role="alert">
-                                <strong className="font-bold block">Oops!</strong>
-                                <span>{error}</span>
+                {/* Main Card */}
+                <Card variant="black">
+                    <div className="border-b-[3px] border-black pb-5 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <div className="inline-block px-2.5 py-0.5 border-2 border-black bg-neon-pink text-white font-heading text-xs font-black uppercase tracking-wider mb-2">
+                                OPERATIONAL HONORS
                             </div>
-                         )}
+                            <h1 className="text-3xl font-black uppercase text-white font-heading tracking-wide flex items-center gap-2">
+                                <i className="fa-solid fa-trophy text-volt"></i> GLOBAL LEADERBOARD
+                            </h1>
+                            <p className="text-zinc-500 text-xs mt-1 font-body">
+                                Official ranking of verified player records and total points accumulated.
+                            </p>
+                        </div>
+                    </div>
 
-                         {/* Loading State */}
-                         {loading ? (
-                            // You can choose between spinner or skeletons
-                            // renderLoadingSpinner()
-                            renderLeaderboardSkeletons(10)
-                         ) : leaderboardData.length === 0 && !error ? (
-                             <div className="text-center py-10 px-6 text-gray-500">
-                                <i className="fas fa-users fa-2x mb-3 text-gray-400"></i>
-                                <p>The leaderboard is empty right now.</p>
-                                <p className='mt-1 text-sm'>Play some quizzes to get started!</p>
-                             </div>
-                         ) : (
-                            /* Leaderboard List */
-                            <ul className="space-y-3">
-                                {leaderboardData.map((user, index) => (
+                    {error && !loading && (
+                        <div className="mb-6 bg-neon-pink border-[3px] border-black text-white px-4 py-3 shadow-[4px_4px_0_0_#000] font-heading font-extrabold uppercase tracking-wide flex items-center gap-2" role="alert">
+                            <i className="fa-solid fa-triangle-exclamation"></i>
+                            <span>ERROR: {error}</span>
+                        </div>
+                    )}
+
+                    {loading ? (
+                        renderLeaderboardSkeletons(8)
+                    ) : leaderboardData.length === 0 && !error ? (
+                        <div className="text-center py-10 px-6 border-[3px] border-black bg-zinc-950 text-zinc-500">
+                            <i className="fa-solid fa-users fa-2x mb-3 text-zinc-600"></i>
+                            <p className="font-heading font-black uppercase text-sm">NO LOGS AVAILABLE</p>
+                            <p className="text-xs text-zinc-600 mt-1 font-body">Earn score multiplier tokens inside quiz rooms.</p>
+                        </div>
+                    ) : (
+                        <ul className="space-y-4">
+                            {leaderboardData.map((user, index) => {
+                                const rank = index + 1;
+                                const rankTheme = getRankTheme(rank);
+
+                                // Specific style highlighting top 3
+                                const rankColor =
+                                    rank === 1 ? 'border-volt bg-volt/5 shadow-[4px_4px_0px_0px_#ccff00]' :
+                                        rank === 2 ? 'border-neon-pink bg-neon-pink/5 shadow-[4px_4px_0px_0px_#ec4899]' :
+                                            rank === 3 ? 'border-neon-cyan bg-neon-cyan/5 shadow-[4px_4px_0px_0px_#06b6d4]' :
+                                                'border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]';
+
+                                return (
                                     <li
                                         key={user._id || index}
-                                        className={`flex items-center justify-between p-3.5 md:p-4 rounded-lg border 
-                                                   transition duration-300 ease-in-out transform 
-                                                   hover:scale-[1.02] hover:shadow-md hover:border-indigo-300 hover:bg-indigo-50/50
-                                                   ${getRankClass(index + 1)}`} // Apply rank-specific background/border
+                                        className={`flex items-center justify-between p-3.5 bg-zinc-900 border-[3px] transition-all hover:scale-[1.01] ${rankColor}`}
                                     >
-                                        <div className="flex items-center space-x-3 md:space-x-4 flex-1 min-w-0">
-                                            {/* Rank Number */}
-                                            <span className={`flex-shrink-0 w-8 h-8 md:w-9 md:h-9 rounded-md flex items-center justify-center 
-                                                              font-bold text-sm border ${getRankClass(index + 1)} shadow-sm`}>
-                                                {index + 1}
-                                            </span>
+                                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                                            {/* Rank tag */}
+                                            <Badge variant={rankTheme.variant} className="w-14 items-center justify-center py-1">
+                                                {rankTheme.label}
+                                            </Badge>
 
-                                            {/* User Info */}
-                                            <div className="flex-1 min-w-0">
-                                                 <p className="text-sm md:text-base font-semibold text-gray-800 truncate" title={user.username}>
-                                                    {/* Optional: Add avatar here if available */}
+                                            {/* Avatar initials */}
+                                            <Avatar title={user.username} size="sm" className="hidden sm:inline-flex shrink-0" />
+
+                                            {/* Username */}
+                                            <div className="min-w-0">
+                                                <span className="font-heading font-extrabold text-sm md:text-base text-zinc-100 truncate block uppercase max-w-[150px] sm:max-w-xs">
                                                     {user.username}
-                                                 </p>
-                                                 {/* Optionally display join date or other info */}
-                                                 {/* <p className="text-xs text-gray-500">Joined: {new Date(user.createdAt).toLocaleDateString()}</p> */}
+                                                </span>
                                             </div>
                                         </div>
 
-                                        {/* Points */}
-                                        <div className="flex-shrink-0 ml-3 text-right">
-                                            <span className="text-sm md:text-base font-bold text-indigo-700">
-                                                {user.totalPoints}
+                                        {/* Score */}
+                                        <div className="text-right">
+                                            <span className="font-heading font-black text-base md:text-xl text-volt block">
+                                                {user.totalPoints} <span className="text-[10px] text-zinc-500 font-bold uppercase font-mono">PTS</span>
                                             </span>
-                                            <span className="text-xs text-indigo-600/80 block md:inline md:ml-1">pts</span>
                                         </div>
                                     </li>
-                                ))}
-                            </ul>
-                         )}
-                     </div>
-                </div>
-                 {/* Optional: Add pagination controls here if leaderboard becomes very large */}
+                                );
+                            })}
+                        </ul>
+                    )}
+                </Card>
             </div>
         </div>
     );

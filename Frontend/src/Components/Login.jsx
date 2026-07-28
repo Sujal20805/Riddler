@@ -1,145 +1,153 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/diff.png"; // Verify this path is correct
-import axiosInstance from "../api/axiosInstance"; // Import the configured instance
-import { toast, ToastContainer } from 'react-toastify'; // Using react-toastify
-import 'react-toastify/dist/ReactToastify.css';      // Toast CSS
+import logo from "../assets/diff.png";
+import axiosInstance from "../api/axiosInstance";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Button from "./ui/Button";
+import FormField from "./ui/FormField";
+import Card from "./ui/Card";
+import Badge from "./ui/Badge";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   const navigate = useNavigate();
+
+  const handleValidate = () => {
+    const errors = {};
+    if (!username.trim()) errors.username = "Username is required";
+    if (!password) {
+      errors.password = "Password is required";
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!handleValidate()) {
+      toast.error("Please resolve validation issues.");
+      return;
+    }
     setLoading(true);
-    // Clear previous toasts if any
-    // toast.dismiss();
 
     try {
       const response = await axiosInstance.post("/auth/login", {
-        username: username, // Send username as typed (backend handles lowercase lookup)
-        // username: username.toLowerCase(), // Or send lowercase directly
+        username: username.trim(),
         password,
       });
 
-      console.log("Login Success:", response.data);
-
-      // --- Ensure response.data has the expected fields ---
       if (!response.data.token || !response.data._id || !response.data.username || !response.data.name) {
-          console.error("Incomplete login response from backend:", response.data);
-          toast.error("Login failed: Invalid response from server.");
-          setLoading(false);
-          return; // Stop execution
+        console.error("Incomplete login response from backend:", response.data);
+        toast.error("Login failed: Invalid response from server.");
+        setLoading(false);
+        return;
       }
-      // --- End Check ---
 
-
-      // Store token and user info in localStorage
       localStorage.setItem('quizAppToken', response.data.token);
-      localStorage.setItem('quizAppUser', JSON.stringify({ // Store basic user info
-          _id: response.data._id,
-          username: response.data.username,
-          name: response.data.name
+      localStorage.setItem('quizAppUser', JSON.stringify({
+        _id: response.data._id,
+        username: response.data.username,
+        name: response.data.name
       }));
 
-      toast.success("Login Successful!");
-      // Add a small delay before navigating to allow toast to show (optional)
+      toast.success("LOGIN SUCCESSFUL! REDIRECTING...");
       setTimeout(() => {
-         navigate("/home"); // Redirect to dashboard
+        navigate("/home");
       }, 1000);
-
 
     } catch (error) {
       console.error("Login Failed:", error.response?.data || error.message);
-      // Extract error message from backend response if available
-      const message = error.response?.data?.message || "Login failed. Please check credentials or server status.";
-      toast.error(message); // Show error toast
+      const message = error.response?.data?.message || "Login failed. Check server connection.";
+      toast.error(message.toUpperCase());
     } finally {
-      // Ensure loading is always set to false, even after navigation delay
-       setTimeout(() => setLoading(false), 500); // Delay slightly to avoid UI flicker if navigation is fast
+      setTimeout(() => setLoading(false), 500);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-green-400 to-blue-500 p-4">
-      {/* Toast Container for notifications */}
+    <div className="flex items-center justify-center min-h-[90vh] bg-zinc-950 text-white scanlines game-dot-grid p-4">
       <ToastContainer
-          position="top-center"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="colored"
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
       />
-      <div className="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md">
-        {/* Centered Logo */}
-        <div className="flex justify-center mb-4">
-          <Link to="/" className="flex items-center text-2xl font-bold">
-             {/* Ensure bg-emerald-200 is desired or remove if logo has bg */}
-            <img src={logo} alt="Logo" className="w-30 h-20" />
-          </Link>
-        </div>
-        {/* Title */}
-        <h2 className="text-4xl font-extrabold text-center text-green-700 mb-6">Login</h2>
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          {/* Username Input */}
-          <div className="mb-5">
-            <label className="block text-gray-800 font-semibold mb-1">Username</label>
-            <input
-              type="text"
-              className="w-full p-3 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none bg-gray-50 transition duration-200"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              disabled={loading}
+
+      <Card variant="volt" className="w-full max-w-md my-8">
+        <div className="flex flex-col items-center">
+          {/* Centered Logo */}
+          <div className="mb-6 flex justify-center">
+            <Link to="/" className="inline-block p-1 bg-white border-2 border-black rotate-[-2deg] shadow-[2px_2px_0_0_#000]">
+              <img src={logo} alt="Riddler Logo" className="h-14 w-auto object-contain" />
+            </Link>
+          </div>
+
+          <Badge variant="cyan" className="mb-4">CREDENTIAL AUTHORIZATION</Badge>
+
+          <h2 className="text-3xl font-black uppercase text-center text-white mb-6 font-heading tracking-wide">
+            PLAYER LOGIN
+          </h2>
+
+          <form onSubmit={handleSubmit} className="w-full flex flex-col gap-5">
+            <FormField
+              label="Username"
+              id="username"
               placeholder="Enter your username"
-            />
-          </div>
-          {/* Password Input */}
-          <div className="mb-5">
-            <label className="block text-gray-800 font-semibold mb-1">Password</label>
-            <input
-              type="password"
-              className="w-full p-3 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-green-500 outline-none bg-gray-50 transition duration-200"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (validationErrors.username) setValidationErrors(prev => ({ ...prev, username: "" }));
+              }}
+              error={validationErrors.username}
               disabled={loading}
-              placeholder="Enter your password"
+              icon="fa-solid fa-user-ninja"
             />
-          </div>
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className={`w-full bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 font-bold shadow-md transition duration-200 ${loading ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105'}`}
-            disabled={loading}
-          >
-            {loading ? (
-                 <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Logging in...
-                 </span>
-            ) : (
-                'Login'
-            )}
-          </button>
-        </form>
-        {/* Signup Link */}
-        <p className="text-center mt-6 text-gray-800">
-          Don't have an account?
-          <Link to="/signup" className="text-green-700 hover:underline font-semibold ml-1">Sign Up</Link>
-        </p>
-      </div>
+
+            <FormField
+              label="Password"
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (validationErrors.password) setValidationErrors(prev => ({ ...prev, password: "" }));
+              }}
+              error={validationErrors.password}
+              disabled={loading}
+              icon="fa-solid fa-key"
+            />
+
+            <Button
+              type="submit"
+              variant="volt"
+              className="w-full mt-2"
+              loading={loading}
+            >
+              AUTHENTICATE PLAYER
+            </Button>
+          </form>
+
+          <p className="text-center mt-6 text-sm text-zinc-400 font-medium font-body">
+            NEW PLAYER?
+            <Link to="/signup" className="text-volt hover:underline font-extrabold ml-1 uppercase">
+              REGISTER ACCOUNT
+            </Link>
+          </p>
+        </div>
+      </Card>
     </div>
   );
 };

@@ -14,6 +14,7 @@ import Profile from "./Components/Profile.jsx";
 import Faq from "./Components/Faq.jsx";
 import Play from "./Components/Play.jsx";
 import Leaderboard from "./Components/Leaderboard.jsx";
+import NotFound from "./Components/NotFound.jsx";
 // Helper Component
 import ProtectedRoute from "./Components/ProtectedRoute.jsx" // Import the guard
 
@@ -68,37 +69,37 @@ const router = createBrowserRouter([
           //    element: <Leaderboard />, // Assuming you create this page component
           //    // If MainPage was intended for leaderboard, use: element: <MainPage />,
           //  },
-           {
-             path: "profile",
-             element: <Profile />,
-           },
-           {
-             path: "build",
-             element: <QuizBuilderPage />,
-           },
-           {
+          {
+            path: "profile",
+            element: <Profile />,
+          },
+          {
+            path: "build",
+            element: <QuizBuilderPage />,
+          },
+          {
             path: "leaderboard",
             element: <Leaderboard />,
-           },
-            {
-             path: "faqs", // Logged-in FAQ?
-             element: <Faq />, // Or reuse <Faq /> if identical
-           },
-           {
-             // Use :quizCode parameter for playing specific quiz
-             path: "play/:quizCode",
-             element: <Play />,
-           },
-           // Remove duplicate/unused routes like /quiz if covered by /home or /play
+          },
+          {
+            path: "faqs", // Logged-in FAQ?
+            element: <Faq />, // Or reuse <Faq /> if identical
+          },
+          {
+            // Use :quizCode parameter for playing specific quiz
+            path: "play/:quizCode",
+            element: <Play />,
+          },
+          // Remove duplicate/unused routes like /quiz if covered by /home or /play
         ],
       },
     ],
   },
-  // Catch-all or Not Found route (optional)
-  // {
-  //   path: "*",
-  //   element: <div>404 Not Found</div>
-  // }
+  // Catch-all or wildcard route
+  {
+    path: "*",
+    element: <NotFound />
+  }
 ]);
 
 ReactDom.createRoot(document.getElementById("root")).render(

@@ -1,15 +1,13 @@
-/** @format */
-
 import { Outlet } from "react-router-dom";
-import PreNavbar from "./Components/PreNavbar.jsx";
+import Navbar from "./Components/Navbar.jsx";
 
 function App() {
   return (
     <>
-        <PreNavbar />
-        <div className="flex-grow-1" style={{ overflowY: "auto" }}>
+      <Navbar />
+      <div className="flex-grow flex flex-col overflow-y-auto">
         <Outlet />
-        </div>
+      </div>
     </>
   );
 }

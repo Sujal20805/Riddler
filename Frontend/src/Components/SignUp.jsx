@@ -1,12 +1,13 @@
-// --- START OF FILE SignUp.js ---
-
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/diff.png"; // Make sure this path is correct
-import axiosInstance from "../api/axiosInstance"; // Import instance
-// Optional: import toast stuff if needed
-// import { toast, ToastContainer } from 'react-toastify';
-// import 'react-toastify/dist/ReactToastify.css';
+import logo from "../assets/diff.png";
+import axiosInstance from "../api/axiosInstance";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Button from "./ui/Button";
+import FormField from "./ui/FormField";
+import Card from "./ui/Card";
+import Badge from "./ui/Badge";
 
 const SignUp = () => {
   const [username, setUsername] = useState("");
@@ -15,145 +16,211 @@ const SignUp = () => {
   const [dob, setDob] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
   const navigate = useNavigate();
+
+  const handleValidate = () => {
+    const errors = {};
+    if (!username.trim()) {
+      errors.username = "Username is required";
+    } else if (username.length < 3) {
+      errors.username = "Username must be at least 3 characters";
+    }
+
+    if (!name.trim()) errors.name = "Full Name is required";
+
+    if (!email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = "Email address is invalid";
+    }
+
+    if (!dob) {
+      errors.dob = "Date of Birth is required";
+    } else {
+      const birthDate = new Date(dob);
+      const today = new Date();
+      if (birthDate > today) {
+        errors.dob = "Date of Birth cannot be in the future";
+      }
+    }
+
+    if (!password) {
+      errors.password = "Password is required";
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!handleValidate()) {
+      toast.error("Please resolve validation errors.");
+      return;
+    }
     setLoading(true);
+
     try {
       const response = await axiosInstance.post("/auth/register", {
-        username: username.toLowerCase(), // Send username lowercase for consistency
-        name,
-        email,
+        username: username.trim().toLowerCase(),
+        name: name.trim(),
+        email: email.trim(),
         dob,
         password,
       });
 
-      console.log("Signup Success:", response.data);
-
-       // Automatically log in the user after signup
       localStorage.setItem('quizAppToken', response.data.token);
       localStorage.setItem('quizAppUser', JSON.stringify({
-            _id: response.data._id,
-            username: response.data.username, // Use username from response
-            name: response.data.name          // Use name from response
-        }));
+        _id: response.data._id,
+        username: response.data.username,
+        name: response.data.name
+      }));
 
-      // toast.success("Signup Successful!");
-      alert("Signup Successful! You are now logged in."); // Simple alert
-      navigate("/home"); // Redirect to dashboard
+      toast.success("SIGNUP SUCCESSFUL! WELCOME PLAYER.");
+      setTimeout(() => {
+        navigate("/home");
+      }, 1200);
 
     } catch (error) {
       console.error("Signup Failed:", error.response?.data || error.message);
-      // Handle specific validation errors if backend sends an array
-       let message = "Signup failed. Please check your input.";
-        if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-            message = error.response.data.errors.join('\n');
-        } else if (error.response?.data?.message) {
-            message = error.response.data.message;
-        }
-      // toast.error(message);
-      alert(message); // Simple alert
+      let message = "Signup failed. Please check inputs.";
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        message = error.response.data.errors.join('. ');
+      } else if (error.response?.data?.message) {
+        message = error.response.data.message;
+      }
+      toast.error(message.toUpperCase());
     } finally {
       setLoading(false);
     }
   };
 
   return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-400 to-purple-500 p-4">
-          {/* Optional: <ToastContainer position="top-center" autoClose={3000} /> */}
-          <div className="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md">
-            {/* Logo */}
-            <div className="flex justify-center mb-4">
-              <Link to="/" className="flex items-center text-2xl font-bold">
-                 {/* Ensure bg-purple-400 is desired or remove */}
-                <img src={logo} alt="Logo" className="w-30 h-20" />
-              </Link>
-            </div>
-            {/* Title */}
-            <h2 className="text-4xl font-extrabold text-center text-blue-700 mb-6">Sign Up</h2>
-            {/* Form */}
-            <form onSubmit={handleSubmit}>
-                 {/* Username Input */}
-                 <div className="mb-5">
-                    <label className="block text-gray-800 font-semibold">Username</label>
-                    <input
-                        type="text"
-                        className="w-full p-3 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 bg-gray-100"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                        disabled={loading}
-                    />
-                 </div>
-                 {/* Name Input */}
-                 <div className="mb-5">
-                    <label className="block text-gray-800 font-semibold">Full Name</label>
-                    <input
-                        type="text"
-                        className="w-full p-3 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 bg-gray-100"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                        disabled={loading}
-                    />
-                 </div>
-                 {/* Email Input */}
-                 <div className="mb-5">
-                    <label className="block text-gray-800 font-semibold">Email</label>
-                    <input
-                        type="email"
-                        className="w-full p-3 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 bg-gray-100"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        disabled={loading}
-                    />
-                 </div>
-                 {/* DOB Input */}
-                 <div className="mb-5">
-                    <label className="block text-gray-800 font-semibold">Date of Birth</label>
-                    <input
-                        type="date"
-                        className="w-full p-3 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 bg-gray-100"
-                        value={dob}
-                        onChange={(e) => setDob(e.target.value)}
-                        required
-                        disabled={loading}
-                        max={new Date().toISOString().split("T")[0]} // Optional: Prevent future dates
-                    />
-                 </div>
-                 {/* Password Input */}
-                 <div className="mb-5">
-                    <label className="block text-gray-800 font-semibold">Password</label>
-                    <input
-                        type="password"
-                        className="w-full p-3 border border-gray-300 rounded-lg mt-1 focus:ring-2 focus:ring-blue-500 bg-gray-100"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength="6" // Add minLength to match backend validation
-                        disabled={loading}
-                    />
-                 </div>
-                {/* Submit Button */}
-                <button
-                    type="submit"
-                    className={`w-full bg-blue-700 text-white p-3 rounded-lg hover:bg-blue-800 font-bold shadow-md transition duration-200 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={loading}
-                >
-                    {loading ? 'Signing Up...' : 'Sign Up'}
-                </button>
-            </form>
-            {/* Login Link */}
-            <p className="text-center mt-6 text-gray-800">
-              Already have an account?
-              <Link to="/login" className="text-blue-700 hover:underline font-semibold ml-1">Login</Link>
-            </p>
+    <div className="flex items-center justify-center min-h-[95vh] bg-zinc-950 text-white scanlines game-dot-grid p-4">
+      <ToastContainer
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
+
+      <Card variant="pink" className="w-full max-w-md my-8">
+        <div className="flex flex-col items-center">
+          {/* Centered Logo */}
+          <div className="mb-6 flex justify-center">
+            <Link to="/" className="inline-block p-1 bg-white border-2 border-black rotate-[-2deg] shadow-[2px_2px_0_0_#000]">
+              <img src={logo} alt="Riddler Logo" className="h-14 w-auto object-contain" />
+            </Link>
           </div>
-      </div>
+
+          <Badge variant="volt" className="mb-4">NEW UNIT REGISTRATION</Badge>
+
+          <h2 className="text-3xl font-black uppercase text-center text-white mb-6 font-heading tracking-wide">
+            PLAYER SIGN UP
+          </h2>
+
+          <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
+            <FormField
+              label="Username"
+              id="username"
+              placeholder="Pick a unique handle"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                if (validationErrors.username) setValidationErrors(prev => ({ ...prev, username: "" }));
+              }}
+              error={validationErrors.username}
+              disabled={loading}
+              icon="fa-solid fa-medal"
+            />
+
+            <FormField
+              label="Full Name"
+              id="name"
+              placeholder="Enter your profile name"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (validationErrors.name) setValidationErrors(prev => ({ ...prev, name: "" }));
+              }}
+              error={validationErrors.name}
+              disabled={loading}
+              icon="fa-solid fa-signature"
+            />
+
+            <FormField
+              label="Email Address"
+              id="email"
+              type="email"
+              placeholder="player@riddler.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (validationErrors.email) setValidationErrors(prev => ({ ...prev, email: "" }));
+              }}
+              error={validationErrors.email}
+              disabled={loading}
+              icon="fa-solid fa-envelope"
+            />
+
+            <FormField
+              label="Date of Birth"
+              id="dob"
+              type="date"
+              value={dob}
+              onChange={(e) => {
+                setDob(e.target.value);
+                if (validationErrors.dob) setValidationErrors(prev => ({ ...prev, dob: "" }));
+              }}
+              error={validationErrors.dob}
+              disabled={loading}
+              max={new Date().toISOString().split("T")[0]}
+            />
+
+            <FormField
+              label="Password"
+              id="password"
+              type="password"
+              placeholder="Min 6 characters"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (validationErrors.password) setValidationErrors(prev => ({ ...prev, password: "" }));
+              }}
+              error={validationErrors.password}
+              disabled={loading}
+              icon="fa-solid fa-lock"
+            />
+
+            <Button
+              type="submit"
+              variant="pink"
+              className="w-full mt-2"
+              loading={loading}
+            >
+              CREATE GAME PROFILE
+            </Button>
+          </form>
+
+          <p className="text-center mt-6 text-sm text-zinc-400 font-medium font-body">
+            ALREADY REGISTERED?
+            <Link to="/login" className="text-neon-pink hover:underline font-extrabold ml-1 uppercase">
+              PLAYER LOGIN
+            </Link>
+          </p>
+        </div>
+      </Card>
+    </div>
   );
 };
 
 export default SignUp;
-// --- END OF FILE SignUp.js ---

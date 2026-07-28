@@ -38,7 +38,7 @@ const createQuiz = async (req, res) => {
         if (quizCode) {
             quizCode = quizCode.toUpperCase().trim();
             if (!/^[A-Z0-9_.-]+$/i.test(quizCode)) {
-                 return res.status(400).json({ message: "Custom quiz code can only contain letters, numbers, hyphens (-), underscores (_), and periods (.)." });
+                return res.status(400).json({ message: "Custom quiz code can only contain letters, numbers, hyphens (-), underscores (_), and periods (.)." });
             }
             const existingCode = await Quiz.findOne({ quizCode });
             if (existingCode) {
@@ -55,11 +55,11 @@ const createQuiz = async (req, res) => {
             title,
             description,
             questions: questions.map(q => ({ // Map frontend names to backend schema names if needed
-                 questionText: q.questionText,
-                 image: q.image, // Assuming base64 or URL is passed
-                 options: q.options,
-                 correctOptionIndex: q.correctOptionIndex, // Frontend sends correctAnswerIndex, map it
-                 points: q.points
+                questionText: q.questionText,
+                image: q.image, // Assuming base64 or URL is passed
+                options: q.options,
+                correctOptionIndex: q.correctOptionIndex, // Frontend sends correctAnswerIndex, map it
+                points: q.points
             })),
             createdBy: req.user._id, // Attach the logged-in user's ID
         });
@@ -69,26 +69,26 @@ const createQuiz = async (req, res) => {
 
     } catch (error) {
         console.error("Quiz Creation Error:", error);
-         // Handle Mongoose validation errors specifically
+        // Handle Mongoose validation errors specifically
         if (error.name === 'ValidationError') {
             // Collect specific error messages from nested questions if possible
-             let messages = [];
-             if (error.errors) {
+            let messages = [];
+            if (error.errors) {
                 messages = Object.values(error.errors).map(val => val.message);
-             }
-             // Fallback for nested validation errors within questions array
-             if (messages.length === 0 && error._message) {
-                 messages.push(error._message); // General validation error message
-             }
-             // Try to get more specific errors from questions
-             if (error.errors && error.errors['questions']) {
+            }
+            // Fallback for nested validation errors within questions array
+            if (messages.length === 0 && error._message) {
+                messages.push(error._message); // General validation error message
+            }
+            // Try to get more specific errors from questions
+            if (error.errors && error.errors['questions']) {
                 messages.push(`Question validation error: ${error.errors['questions'].message}`);
-             }
+            }
 
             return res.status(400).json({
                 message: 'Quiz validation failed. Check questions and details.',
                 errors: messages.length > 0 ? messages : ['Invalid data submitted']
-             });
+            });
         }
         res.status(500).json({ message: 'Server error creating quiz' });
     }
@@ -102,9 +102,9 @@ const getAllQuizzes = async (req, res) => {
         // Select fields to reduce payload size, populate creator info if needed
         const quizzes = await Quiz.find({})
             .select('title description quizCode createdAt createdBy questions') // Include questions to get count/points? Maybe not needed here.
-            // .populate('createdBy', 'username name'); // Optionally populate user info
+        // .populate('createdBy', 'username name'); // Optionally populate user info
 
-         // Add question count and total possible points to each quiz
+        // Add question count and total possible points to each quiz
         const quizzesWithStats = quizzes.map(quiz => {
             const totalPoints = quiz.questions.reduce((sum, q) => sum + q.points, 0);
             return {
@@ -115,7 +115,7 @@ const getAllQuizzes = async (req, res) => {
                 questionCount: quiz.questions.length,
                 totalPoints: totalPoints,
                 createdAt: quiz.createdAt,
-                // createdBy: quiz.createdBy // Uncomment if populated
+                createdBy: quiz.createdBy
             };
         });
 
@@ -133,9 +133,9 @@ const getAllQuizzes = async (req, res) => {
 const getQuizByCode = async (req, res) => {
     try {
         const quiz = await Quiz.findOne({ quizCode: req.params.quizCode.toUpperCase() })
-             // Exclude correct answers when fetching for playing initially
-             .select('-questions.correctOptionIndex');
-             // .populate('createdBy', 'username'); // Optionally populate creator
+            // Exclude correct answers when fetching for playing initially
+            .select('-questions.correctOptionIndex');
+        // .populate('createdBy', 'username'); // Optionally populate creator
 
         if (quiz) {
             res.json(quiz);
@@ -176,14 +176,14 @@ const submitQuiz = async (req, res) => {
 
         // Calculate score securely on the backend
         quiz.questions.forEach((question, index) => {
-             maxScore += question.points; // Sum up total possible points
-             const submittedAnswerIndex = answers[index];
+            maxScore += question.points; // Sum up total possible points
+            const submittedAnswerIndex = answers[index];
             // Check if submitted answer index is valid (0-3) and matches the correct index
             if (submittedAnswerIndex !== null && submittedAnswerIndex !== undefined &&
                 submittedAnswerIndex >= 0 && submittedAnswerIndex <= 3 && // Basic validation
                 submittedAnswerIndex === question.correctOptionIndex) {
-                 score += question.points; // Add points for correct answer
-             }
+                score += question.points; // Add points for correct answer
+            }
         });
 
         // Update user's total points
@@ -199,7 +199,7 @@ const submitQuiz = async (req, res) => {
             });
         } else {
             // This shouldn't happen if protect middleware works, but handle defensively
-             res.status(404).json({ message: 'User not found to update score.' });
+            res.status(404).json({ message: 'User not found to update score.' });
         }
 
     } catch (error) {
@@ -209,9 +209,35 @@ const submitQuiz = async (req, res) => {
 };
 
 
+// @desc    Delete a quiz by its code
+// @route   DELETE /api/quizzes/:quizCode
+// @access  Private
+const deleteQuiz = async (req, res) => {
+    try {
+        const quiz = await Quiz.findOne({ quizCode: req.params.quizCode.toUpperCase() });
+
+        if (!quiz) {
+            return res.status(404).json({ message: 'Quiz not found' });
+        }
+
+        // Check if the current user is the owner
+        if (quiz.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized to delete this quiz' });
+        }
+
+        await Quiz.deleteOne({ _id: quiz._id });
+        res.json({ message: 'Quiz deleted successfully' });
+    } catch (error) {
+        console.error("Delete Quiz Error:", error);
+        res.status(500).json({ message: 'Server error deleting quiz' });
+    }
+};
+
+
 module.exports = {
     createQuiz,
     getAllQuizzes,
     getQuizByCode,
     submitQuiz,
+    deleteQuiz,
 };

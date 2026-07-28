@@ -1,45 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../api/axiosInstance';
-
-// Helper function to generate initials for the avatar
-const generateInitials = (title) => {
-    if (!title) return '??';
-    const words = title.trim().split(/\s+/);
-    if (words.length === 1) {
-        // Take first two letters if single word
-        return words[0].substring(0, 2).toUpperCase();
-    } else if (words.length > 1) {
-        // Take first letter of first two words
-        return (words[0][0] + words[1][0]).toUpperCase();
-    }
-    return '??'; // Fallback
-};
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import Card from './ui/Card';
+import Badge from './ui/Badge';
+import Button from './ui/Button';
+import Avatar from './ui/Avatar';
+import Skeleton from './ui/Skeleton';
 
 // Helper function to truncate text
 const truncateText = (text, maxLength) => {
     if (!text) return '';
-    if (text.length <= maxLength) {
-        return text;
-    }
+    if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
 };
-
-// Simple consistent color generation based on title length
-const getAvatarColor = (title) => {
-    const colors = [
-        'bg-blue-500', 'bg-green-500', 'bg-red-500', 'bg-yellow-500',
-        'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500',
-        'bg-cyan-500', 'bg-orange-500' // Added more colors
-    ];
-    // Use char codes sum for a bit more variation
-    let hash = 0;
-    for (let i = 0; i < (title?.length || 0); i++) {
-        hash = title.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash % colors.length);
-    return colors[index];
-}
 
 const Dashboard = () => {
     const [quizzes, setQuizzes] = useState([]);
@@ -49,17 +24,18 @@ const Dashboard = () => {
     const [error, setError] = useState(null);
     const navigate = useNavigate();
 
+    const currentUser = JSON.parse(localStorage.getItem('quizAppUser') || '{}');
+
     useEffect(() => {
-        // Function to check auth and potentially logout
         const handleAuthError = (err) => {
             if (err.response?.status === 401) {
-                console.error("Authentication error. Logging out.");
+                console.error("Authenication error. Logging out.");
                 localStorage.removeItem('quizAppToken');
                 localStorage.removeItem('quizAppUser');
                 navigate('/login');
-                return true; // Indicate auth error was handled
+                return true;
             }
-            return false; // Indicate other error
+            return false;
         };
 
         const fetchQuizzes = async () => {
@@ -71,192 +47,258 @@ const Dashboard = () => {
             } catch (err) {
                 console.error("Error fetching quizzes:", err.response?.data || err.message);
                 if (!handleAuthError(err)) {
-                     setError('Failed to load quizzes. Please try again later.');
+                    setError('Failed to load quizzes. Please try again later.');
                 }
             } finally {
-                // Delay slightly to prevent flash of loading state if data loads quickly
-                 setTimeout(() => setLoadingQuizzes(false), 200);
+                setTimeout(() => setLoadingQuizzes(false), 200);
             }
         };
 
         const fetchLeaderboard = async () => {
             try {
                 setLoadingLeaderboard(true);
-                const response = await axiosInstance.get('/users/leaderboard?limit=5'); // Get top 5
+                const response = await axiosInstance.get('/users/leaderboard?limit=5');
                 setLeaderboard(response.data);
             } catch (err) {
                 console.error("Error fetching leaderboard:", err.response?.data || err.message);
-                 if (!handleAuthError(err)) {
-                    // Don't overwrite quiz error if it exists
+                if (!handleAuthError(err)) {
                     setError(prev => prev || 'Failed to load leaderboard.');
-                 }
+                }
             } finally {
-                 setTimeout(() => setLoadingLeaderboard(false), 200);
+                setTimeout(() => setLoadingLeaderboard(false), 200);
             }
         };
 
-        // Check for token before fetching
         if (!localStorage.getItem('quizAppToken')) {
             navigate('/login');
-            return; // Prevent fetching if not logged in
+            return;
         }
 
         fetchQuizzes();
         fetchLeaderboard();
-
-    // Only include navigate in dependencies, fetch functions are defined inside
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigate]);
 
     const handlePlayQuiz = (quizCode) => {
         if (quizCode) {
             navigate(`/play/${quizCode}`);
         } else {
-            console.error("Cannot play quiz: Missing quiz code.");
-            // Optionally show an error to the user
+            console.error("Missing quiz code.");
         }
     };
 
-    // Loading state for the main content area
+    const handleDeleteQuiz = async (e, quizCode, title) => {
+        e.stopPropagation();
+        if (!window.confirm(`Are you sure you want to delete the chamber: "${title.toUpperCase()}"?`)) {
+            return;
+        }
+
+        try {
+            await axiosInstance.delete(`/quizzes/${quizCode}`);
+            setQuizzes(prev => prev.filter(q => q.quizCode !== quizCode));
+            toast.success(`CHAMBER "${title.toUpperCase()}" REMOVED`);
+        } catch (err) {
+            console.error("Error deleting quiz:", err.response?.data || err.message);
+            const errorMsg = err.response?.data?.message || "Failed to delete quiz.";
+            toast.error(errorMsg.toUpperCase());
+        }
+    };
+
     const renderLoadingSkeletons = (count = 3) => (
         Array.from({ length: count }).map((_, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-md h-64 flex flex-col overflow-hidden animate-pulse">
-                <div className="w-full h-28 bg-gray-300"></div>
-                <div className="p-4 flex flex-col justify-between flex-grow space-y-3">
-                    <div className="h-5 bg-gray-300 rounded w-3/4"></div>
-                    <div className="h-4 bg-gray-300 rounded w-full"></div>
-                    <div className="h-4 bg-gray-300 rounded w-5/6"></div>
-                    <div className="flex justify-between items-center mt-auto self-stretch pt-2">
-                        <div className="h-3 bg-gray-300 rounded w-1/4"></div>
-                        <div className="h-4 bg-gray-300 rounded w-1/3"></div>
+            <div key={index} className="bg-zinc-900 border-[3px] border-black p-5 flex flex-col justify-between h-64 shadow-[4px_4px_0px_0px_#000000] animate-pulse">
+                <div className="flex gap-4">
+                    <Skeleton className="w-14 h-14" />
+                    <div className="flex-grow flex flex-col gap-2">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
                     </div>
                 </div>
+                <Skeleton className="h-10 w-full" />
             </div>
         ))
     );
 
-     // Loading state for leaderboard
-     const renderLeaderboardSkeletons = (count = 5) => (
-        <ul className="divide-y divide-gray-200 animate-pulse">
+    const renderLeaderboardSkeletons = (count = 5) => (
+        <ul className="space-y-3 animate-pulse">
             {Array.from({ length: count }).map((_, index) => (
-                <li key={index} className="py-3 flex justify-between items-center">
-                    <div className="h-4 bg-gray-300 rounded w-2/5"></div>
-                    <div className="h-4 bg-gray-300 rounded w-1/4"></div>
+                <li key={index} className="flex justify-between items-center gap-3">
+                    <Skeleton className="h-5 w-2/3" />
+                    <Skeleton className="h-5 w-1/4" />
                 </li>
             ))}
         </ul>
     );
 
     return (
-        <div className="bg-gray-100 min-h-screen p-4 md:p-8 font-sans">
-            <div className="container mx-auto max-w-7xl">
-                {/* Create Quiz Card */}
+        <div className="min-h-screen bg-zinc-950 text-white scanlines game-dot-grid p-4 md:p-8 font-sans animate-scanline-laser">
+            <ToastContainer
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="colored"
+            />
+            <div className="container mx-auto max-w-6xl animate-slide-up">
+                {/* Create Quiz CTA Card */}
                 <Link to="/build" className="block mb-8 group">
-                    <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-xl shadow-lg hover:shadow-xl transition duration-300 cursor-pointer group-hover:scale-[1.02]">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-2xl md:text-3xl font-bold mb-1">Create Your Own Quiz</h2>
-                                <p className="text-lg hidden md:block opacity-80">Unleash your creativity!</p>
+                    <div className="bg-zinc-900 border-[3px] border-black p-6 shadow-[5px_5px_0_0_#ccff00] group-hover:translate-x-[-2px] group-hover:translate-y-[-2px] group-hover:shadow-[7px_7px_0_0_#ccff00] transition-all flex justify-between items-center">
+                        <div>
+                            <div className="inline-block px-2 py-0.5 border-2 border-black bg-neon-pink text-white font-heading text-xs font-black uppercase tracking-wider mb-2">
+                                MISSION BUILDER
                             </div>
-                            <div className="text-purple-100 group-hover:text-white transition-colors duration-200 group-hover:animate-pulse">
-                                <i className="fa fa-plus-circle text-4xl"></i>
-                            </div>
+                            <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white font-heading">
+                                CREATE YOUR OWN <span className="text-volt">CHAMBER</span>
+                            </h2>
+                            <p className="text-zinc-400 text-sm hidden md:block mt-1 font-body">
+                                Construct unique testing files, add options, and compile a challenge link for players.
+                            </p>
+                        </div>
+                        <div className="w-12 h-12 flex items-center justify-center border-2 border-black bg-volt text-black text-2xl shadow-[2px_2px_0_0_#000] group-hover:bg-volt-dark transition-colors shrink-0">
+                            <i className="fa-solid fa-plus-circle text-md"></i>
                         </div>
                     </div>
                 </Link>
 
-                 {/* Display Error if any */}
-                 {error && (
-                    <div className="mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded relative shadow" role="alert">
-                        <strong className="font-bold block">Error:</strong>
-                        <span>{error}</span>
+                {/* Errors */}
+                {error && (
+                    <div className="mb-6 bg-neon-pink border-[3px] border-black text-white px-4 py-3 shadow-[4px_4px_0_0_#000] font-heading font-extrabold uppercase tracking-wide flex items-center gap-2" role="alert">
+                        <i className="fa-solid fa-triangle-exclamation"></i>
+                        <span>ERROR: {error}</span>
                     </div>
-                 )}
+                )}
 
+                {/* Dashboard Grid layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8">
-                    {/* Quiz Grid */}
+                    {/* Quizzes List */}
                     <div className="lg:col-span-3">
-                        <h2 className="text-xl font-semibold mb-4 text-gray-700">Available Quizzes</h2>
+                        <div className="flex items-center gap-2 mb-6">
+                            <Badge variant="volt">CHAMBERS</Badge>
+                            <h2 className="text-xl font-black uppercase text-white font-heading tracking-wide">
+                                ACTIVE QUEUES
+                            </h2>
+                        </div>
+
                         {loadingQuizzes ? (
-                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {renderLoadingSkeletons(3)}
-                             </div>
+                            </div>
                         ) : quizzes.length === 0 && !error ? (
-                             <div className="text-center py-10 px-6 bg-white rounded-lg shadow border border-gray-200 text-gray-500">
-                                <i className="fas fa-search fa-2x mb-3 text-gray-400"></i>
-                                <p>No quizzes found. Why not <Link to="/build" className='text-indigo-500 hover:underline font-medium'>create one</Link>?</p>
-                             </div>
-                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <div className="text-center py-12 px-6 border-[3px] border-black bg-zinc-900 shadow-[4px_4px_0_0_#000]">
+                                <i className="fa-solid fa-ghost fa-2x mb-3 text-zinc-500"></i>
+                                <p className="text-zinc-400 mb-4 font-body">No quiz chambers detected in active range.</p>
+                                <Link to="/build">
+                                    <Button variant="cyan">INITIALIZE MAIN CORE</Button>
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {quizzes.map((quiz) => (
-                                    // Use onClick to navigate programmatically
-                                    <div key={quiz._id} onClick={() => handlePlayQuiz(quiz.quizCode)}
-                                         className="block cursor-pointer group rounded-xl bg-white shadow-md hover:shadow-lg transition duration-300 overflow-hidden border border-transparent hover:border-indigo-300"
-                                         title={`Play "${quiz.title}"`}>
-                                        <div className="h-full flex flex-col">
-                                            {/* Avatar Section */}
-                                            <div className={`w-full h-28 flex items-center justify-center ${getAvatarColor(quiz.title)} transition-transform duration-300 group-hover:scale-105`}>
-                                                <span className="text-4xl font-bold text-white opacity-90">
-                                                    {generateInitials(quiz.title)}
-                                                </span>
-                                            </div>
-                                            {/* Content Section */}
-                                            <div className="p-4 flex flex-col justify-between flex-grow">
-                                                <div>
-                                                    <h3 className="text-lg font-semibold mb-1 text-gray-800 group-hover:text-indigo-600 truncate" title={quiz.title}>
-                                                        {truncateText(quiz.title, 35)}
+                                    <Card
+                                        key={quiz._id}
+                                        onClick={() => handlePlayQuiz(quiz.quizCode)}
+                                        variant="black"
+                                        className="flex flex-col justify-between min-h-[17rem] group cursor-pointer relative"
+                                    >
+                                        <div>
+                                            {/* Top info */}
+                                            <div className="flex gap-4 items-start mb-4 pr-8">
+                                                <Avatar title={quiz.title} size="sm" className="shrink-0" />
+                                                <div className="overflow-hidden">
+                                                    <h3 className="font-heading font-black text-lg text-white group-hover:text-volt uppercase leading-snug truncate" title={quiz.title}>
+                                                        {truncateText(quiz.title, 25)}
                                                     </h3>
-                                                    <p className="text-gray-600 text-sm mb-2 h-10 overflow-hidden" title={quiz.description || 'No description'}>
-                                                        {truncateText(quiz.description, 60) || <span className='italic'>No description</span>}
-                                                    </p>
-                                                </div>
-                                                 <div className="flex justify-between items-center mt-auto self-stretch border-t pt-3">
-                                                    <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded">
-                                                        {quiz.questionCount} Qs • {quiz.totalPoints} pts
-                                                    </span>
-                                                    <span className="text-indigo-500 group-hover:text-indigo-700 font-semibold text-sm flex items-center">
-                                                        Play Quiz <i className="fas fa-arrow-right ml-1 text-xs transition-transform duration-200 group-hover:translate-x-1"></i>
+                                                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono block mt-0.5">
+                                                        CODE: {quiz.quizCode}
                                                     </span>
                                                 </div>
                                             </div>
+                                            <p className="text-zinc-400 text-xs md:text-sm font-medium leading-relaxed mb-4 h-10 overflow-hidden font-body" title={quiz.description || 'No description'}>
+                                                {truncateText(quiz.description, 60) || <span className="italic">No description provided</span>}
+                                            </p>
                                         </div>
-                                    </div>
+
+                                        {/* Deletion button if ownership matches user */}
+                                        {currentUser && currentUser._id === quiz.createdBy && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleDeleteQuiz(e, quiz.quizCode, quiz.title)}
+                                                className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center border-2 border-black bg-zinc-950 text-neon-pink shadow-[2px_2px_0_0_#000] hover:bg-neon-pink hover:text-white transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_0_#000] z-20"
+                                                title="Delete Custom Chamber"
+                                            >
+                                                <i className="fa-solid fa-trash-can text-xs" />
+                                            </button>
+                                        )}
+
+                                        <div className="flex justify-between items-center pt-3 border-t-2 border-black/20 mt-auto">
+                                            <Badge variant="cyan">
+                                                {quiz.questionCount} Qs • {quiz.totalPoints} PTS
+                                            </Badge>
+                                            <span className="text-volt flex items-center font-heading font-extrabold text-xs tracking-wider uppercase group-hover:underline">
+                                                ENGAGE <i className="fa-solid fa-chevron-right ml-1 text-[10px]" />
+                                            </span>
+                                        </div>
+                                    </Card>
                                 ))}
                             </div>
-                         )}
+                        )}
                     </div>
 
-                    {/* Leaderboard */}
+                    {/* Right column Sidebar Leaderboard */}
                     <div className="lg:col-span-1">
-                        {/* Sticky positioning for leaderboard on larger screens */}
-                        <div className="bg-white rounded-xl shadow-md p-5 lg:sticky lg:top-6 border border-gray-200">
-                            <h2 className="text-lg font-bold mb-3 text-gray-700 border-b pb-2">Top Players</h2>
-                            {loadingLeaderboard ? (
-                                renderLeaderboardSkeletons(5)
-                            ) : leaderboard.length === 0 ? (
-                                 <div className="text-center py-5 text-gray-500 text-sm">No leaderboard data yet.</div>
-                             ) : (
-                                <ul className="divide-y divide-gray-100">
-                                    {leaderboard.map((user, index) => (
-                                        <li key={user._id || index} className="py-2.5 flex justify-between items-center text-sm">
-                                            <span className="text-gray-700 truncate pr-2 flex items-center">
-                                                <span className={`font-semibold mr-2 ${index < 3 ? 'text-indigo-600' : 'text-gray-500'}`}>{index + 1}.</span>
-                                                {/* Optional: Add avatar here */}
-                                                {user.username}
-                                            </span>
-                                            <span className="text-gray-800 font-medium whitespace-nowrap bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full text-xs">
-                                                {user.totalPoints} pts
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                             {/* Link to full leaderboard */}
-                             <div className="mt-4 pt-3 border-t border-gray-100">
-                                <Link to="/leaderboard" className="block text-center text-sm text-indigo-500 hover:text-indigo-700 font-medium hover:underline">
-                                    View Full Leaderboard
-                                 </Link>
+                        <div className="lg:sticky lg:top-24">
+                            <div className="flex items-center gap-2 mb-6">
+                                <Badge variant="pink">RANKS</Badge>
+                                <h2 className="text-xl font-black uppercase text-white font-heading tracking-wide">
+                                    ELITE CORE
+                                </h2>
                             </div>
+
+                            <Card variant="accent" className="p-4">
+                                <h3 className="font-heading font-black text-sm uppercase text-black bg-volt border-2 border-black px-2 py-0.5 w-fit rotate-[-1deg] mb-4">
+                                    TOP SCORERS
+                                </h3>
+
+                                {loadingLeaderboard ? (
+                                    renderLeaderboardSkeletons(5)
+                                ) : leaderboard.length === 0 ? (
+                                    <div className="text-center py-5 text-zinc-500 text-xs font-mono select-none">
+                                        NO LOGS FOUND.
+                                    </div>
+                                ) : (
+                                    <ul className="flex flex-col gap-3.5">
+                                        {leaderboard.map((user, index) => (
+                                            <li
+                                                key={user._id || index}
+                                                className="flex justify-between items-center text-sm font-mono border-b-2 border-zinc-800 pb-2 last:border-b-0 last:pb-0"
+                                            >
+                                                <span className="text-zinc-200 truncate pr-2 flex items-center font-body font-bold">
+                                                    <span className={`font-black mr-2 font-heading ${index < 3 ? 'text-neon-pink' : 'text-zinc-500'}`}>
+                                                        {index + 1}.
+                                                    </span>
+                                                    {user.username}
+                                                </span>
+                                                <Badge variant={index < 3 ? 'volt' : 'zinc'} className="font-mono text-xs scale-90">
+                                                    {user.totalPoints} PTS
+                                                </Badge>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+
+                                <div className="mt-5 pt-3 border-t-2 border-black flex justify-center">
+                                    <Link
+                                        to="/leaderboard"
+                                        className="text-xs text-zinc-400 hover:text-white uppercase font-black tracking-wider transition-colors duration-100 flex items-center font-heading"
+                                    >
+                                        FULL LEADERBOARD <i className="fa-solid fa-arrow-right-long ml-1.5" />
+                                    </Link>
+                                </div>
+                            </Card>
                         </div>
                     </div>
                 </div>
